@@ -1,0 +1,250 @@
+# Sistema ERP - Enterprise Resource Planning
+
+## Autor
+**ThiagoMartins2001**
+
+## Visão Geral
+Sistema ERP desenvolvido em Spring Boot com arquitetura MVC, oferecendo funcionalidades de gerenciamento de usuários com autenticação e autorização baseada em roles.
+
+## Tecnologias Utilizadas
+- **Java 21**
+- **Spring Boot 3.5.5**
+- **Spring Security**
+- **Spring Data JPA**
+- **MySQL 8.0**
+- **Docker & Docker Compose**
+- **Maven**
+- **Lombok**
+
+## Estrutura do Projeto
+
+### Arquitetura MVC
+O sistema segue o padrão Model-View-Controller (MVC) com as seguintes camadas:
+
+#### 1. **Model (Modelo)**
+Localização: `src/main/java/CodingTechnology/ERP/model/`
+
+##### User.java
+- **Função**: Entidade JPA que representa um usuário no sistema
+- **Campos**:
+  - `id`: Identificador único (auto-incremento)
+  - `email`: Email do usuário (único, obrigatório)
+  - `password`: Senha criptografada (obrigatório)
+  - `role`: Papel/função do usuário (obrigatório)
+- **Anotações**: `@Entity`, `@Table`, `@Data` (Lombok)
+
+#### 2. **Repository (Repositório)**
+Localização: `src/main/java/CodingTechnology/ERP/repository/`
+
+##### UserRepository.java
+- **Função**: Interface que estende JpaRepository para operações de banco de dados
+- **Métodos**:
+  - `findByEmail(String email)`: Busca usuário por email
+  - `existsByEmail(String email)`: Verifica se email existe
+  - Métodos herdados: `save()`, `findAll()`, `findById()`, `delete()`
+
+#### 3. **Service (Serviço)**
+Localização: `src/main/java/CodingTechnology/ERP/service/`
+
+##### UserService.java
+- **Função**: Camada de negócio que implementa a lógica de usuários
+- **Métodos**:
+  - `saveUser(User user)`: Salva usuário com senha criptografada
+  - `findByEmail(String email)`: Busca usuário por email
+  - `findAllUsers()`: Lista todos os usuários
+- **Funcionalidades**: Criptografia automática de senhas usando BCrypt
+
+#### 4. **Controller (Controlador)**
+Localização: `src/main/java/CodingTechnology/ERP/controller/`
+
+##### UserController.java
+- **Função**: Controlador REST que expõe endpoints da API
+- **Endpoints**:
+  - `POST /api/users/register`: Registra novo usuário
+  - `GET /api/users/login`: Endpoint de login (simulado)
+  - `GET /api/users/listAll`: Lista todos os usuários
+- **Respostas**: HTTP Status codes apropriados (201, 200, 409)
+
+#### 5. **Security (Segurança)**
+Localização: `src/main/java/CodingTechnology/ERP/security/`
+
+##### SecurityConfig.java
+- **Função**: Configuração de segurança do Spring Security
+- **Funcionalidades**:
+  - Desabilita CSRF
+  - Configura autenticação HTTP Basic
+  - Define endpoints públicos e protegidos
+  - Configura BCrypt para criptografia de senhas
+  - Configura DaoAuthenticationProvider
+
+##### CustomUserDetailsService.java
+- **Função**: Serviço customizado para autenticação de usuários
+- **Funcionalidades**:
+  - Carrega usuários do banco de dados
+  - Converte roles para autoridades do Spring Security
+  - Integra com UserRepository
+
+#### 6. **Application (Aplicação Principal)**
+Localização: `src/main/java/CodingTechnology/ERP/`
+
+##### ErpApplication.java
+- **Função**: Classe principal da aplicação Spring Boot
+- **Funcionalidades**:
+  - Inicializa a aplicação
+  - Implementa CommandLineRunner para criação automática do usuário master
+  - Cria usuário administrador padrão (master@erp.com / Master@123)
+
+## Configurações
+
+### Banco de Dados
+- **Tipo**: MySQL 8.0
+- **Porta**: 2311
+- **Database**: erp_database
+- **Usuário**: admin
+- **Senha**: admin
+- **Configuração**: `application.properties`
+
+### Docker
+- **Arquivo**: `docker-compose.yml`
+- **Serviço**: MySQL 8.0
+- **Volumes**: Persistência de dados em `./data`
+- **Porta**: 2311:3306
+
+### Aplicação
+- **Porta**: 8081
+- **URL Base**: http://localhost:8081
+- **DDL**: Auto-update (Hibernate)
+
+## Funcionalidades da API
+
+### 1. **Registro de Usuário**
+- **Endpoint**: `POST /api/users/register`
+- **Corpo da Requisição**:
+```json
+{
+  "email": "usuario@exemplo.com",
+  "password": "senha123",
+  "role": "USER"
+}
+```
+- **Resposta**: 
+  - 201: Usuário registrado com sucesso
+  - 409: Email já em uso
+
+### 2. **Login de Usuário**
+- **Endpoint**: `GET /api/users/login`
+- **Autenticação**: HTTP Basic
+- **Resposta**: 200 - Acesso confirmado
+
+### 3. **Listagem de Usuários**
+- **Endpoint**: `GET /api/users/listAll`
+- **Autenticação**: Obrigatória
+- **Resposta**: Lista de todos os usuários (200)
+
+## Segurança
+
+### Autenticação
+- **Método**: HTTP Basic Authentication
+- **Criptografia**: BCrypt para senhas
+- **Armazenamento**: Banco de dados MySQL
+
+### Autorização
+- **Sistema**: Role-based (RBAC)
+- **Roles Disponíveis**: ADMIN, USER
+- **Endpoints Protegidos**: Todos exceto recursos estáticos
+
+### Endpoints Públicos
+- `/` - Página inicial
+- `/index.html` - Interface web
+- `/css/**` - Arquivos CSS
+- `/js/**` - Arquivos JavaScript
+
+## Como Executar
+
+### Pré-requisitos
+- Java 21
+- Docker e Docker Compose
+- Maven
+
+### Passos para Execução
+
+1. **Iniciar o Banco de Dados**:
+```bash
+docker-compose up -d
+```
+
+2. **Executar a Aplicação**:
+```bash
+mvn spring-boot:run
+```
+
+3. **Acessar a Aplicação**:
+- Web: http://localhost:8081
+- API: http://localhost:8081/api/users
+
+### Usuário Padrão
+- **Email**: master@erp.com
+- **Senha**: Master@123
+- **Role**: ADMIN
+
+## Estrutura de Arquivos
+
+```
+ERP/
+├── src/main/java/CodingTechnology/ERP/
+│   ├── controller/
+│   │   └── UserController.java
+│   ├── model/
+│   │   └── User.java
+│   ├── repository/
+│   │   └── UserRepository.java
+│   ├── security/
+│   │   ├── SecurityConfig.java
+│   │   └── CustomUserDetailsService.java
+│   ├── service/
+│   │   └── UserService.java
+│   └── ErpApplication.java
+├── src/main/resources/
+│   ├── application.properties
+│   ├── static/
+│   │   ├── css/
+│   │   ├── js/
+│   │   └── index.html
+│   └── templates/
+├── data/ (dados do MySQL)
+├── docker-compose.yml
+├── pom.xml
+└── README.md
+```
+
+## Dependências Principais
+
+### Spring Boot Starters
+- `spring-boot-starter-web`: Web MVC
+- `spring-boot-starter-data-jpa`: JPA e Hibernate
+- `spring-boot-starter-security`: Segurança
+- `spring-boot-devtools`: Desenvolvimento
+
+### Banco de Dados
+- `mysql-connector-j`: Driver MySQL
+
+### Utilitários
+- `lombok`: Redução de boilerplate
+- `spring-security-test`: Testes de segurança
+
+## Funcionalidades Futuras Sugeridas
+
+1. **Gestão de Produtos**
+2. **Controle de Estoque**
+3. **Gestão de Clientes**
+4. **Relatórios e Dashboards**
+5. **Sistema de Notificações**
+6. **Auditoria de Logs**
+7. **API REST mais robusta**
+8. **Interface Web moderna**
+
+## Contato
+**Autor**: ThiagoMartins2001
+
+---
+*Documentação gerada em: $(date)*
