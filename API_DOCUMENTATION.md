@@ -93,7 +93,95 @@ fetch('http://localhost:8081/api/users/register', {
 
 ---
 
-### 2. Login de Usuário
+### 2. Criação de Usuário (Admin)
+
+#### POST /api/users/create
+Cria um novo usuário no sistema (apenas para administradores).
+
+**URL**: `http://localhost:8081/api/users/create`
+
+**Método**: `POST`
+
+**Autenticação**: Obrigatória (apenas ADMIN)
+
+**Headers**:
+```
+Content-Type: application/json
+Authorization: Basic <base64(email:password)>
+```
+
+**Corpo da Requisição**:
+```json
+{
+  "email": "novo@empresa.com",
+  "password": "senha123",
+  "role": "USER"
+}
+```
+
+**Parâmetros**:
+- `email` (string, obrigatório): Email único do usuário
+- `password` (string, obrigatório): Senha do usuário (será criptografada)
+- `role` (string, obrigatório): Papel do usuário (ADMIN ou USER)
+
+**Respostas**:
+
+**Sucesso (201 Created)**:
+```json
+"User created successfully:"
+```
+
+**Erro - Email já existe (409 Conflict)**:
+```json
+"Email already in use:"
+```
+
+**Erro - Acesso negado (403 Forbidden)**:
+```json
+{
+  "timestamp": "2024-01-01T12:00:00.000+00:00",
+  "status": 403,
+  "error": "Forbidden",
+  "message": "Access Denied"
+}
+```
+
+**Exemplo de Uso (cURL)**:
+```bash
+curl -X POST http://localhost:8081/api/users/create \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Basic bWFzdGVyQGVycC5jb206TWFzdGVyQDEyMw==" \
+  -d '{
+    "email": "maria@empresa.com",
+    "password": "Senha123",
+    "role": "USER"
+  }'
+```
+
+**Exemplo de Uso (JavaScript)**:
+```javascript
+const credentials = btoa('master@erp.com:Master@123');
+
+fetch('http://localhost:8081/api/users/create', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Basic ${credentials}`
+  },
+  body: JSON.stringify({
+    email: 'maria@empresa.com',
+    password: 'Senha123',
+    role: 'USER'
+  })
+})
+.then(response => response.text())
+.then(data => console.log(data))
+.catch(error => console.error('Erro:', error));
+```
+
+---
+
+### 3. Login de Usuário
 
 #### GET /api/users/login
 Endpoint para autenticação de usuário.
@@ -149,7 +237,7 @@ fetch('http://localhost:8081/api/users/login', {
 
 ---
 
-### 3. Listagem de Usuários
+### 4. Listagem de Usuários
 
 #### GET /api/users/listAll
 Lista todos os usuários registrados no sistema.
@@ -226,7 +314,7 @@ fetch('http://localhost:8081/api/users/listAll', {
 | 201 | Created | Usuário criado com sucesso |
 | 400 | Bad Request | Dados inválidos na requisição |
 | 401 | Unauthorized | Autenticação necessária ou falhou |
-| 403 | Forbidden | Acesso negado (não implementado) |
+| 403 | Forbidden | Acesso negado (endpoint /create apenas para ADMIN) |
 | 404 | Not Found | Endpoint não encontrado |
 | 409 | Conflict | Email já existe |
 | 500 | Internal Server Error | Erro interno do servidor |
@@ -293,6 +381,27 @@ def register_user(email, password, role):
     
     return response.status_code, response.text
 
+# Criar usuário (admin)
+def create_user(email, password, role, admin_credentials):
+    data = {
+        "email": email,
+        "password": password,
+        "role": role
+    }
+    
+    admin_headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Basic {admin_credentials}"
+    }
+    
+    response = requests.post(
+        f"{base_url}/api/users/create",
+        json=data,
+        headers=admin_headers
+    )
+    
+    return response.status_code, response.text
+
 # Listar usuários
 def list_users():
     response = requests.get(
@@ -305,6 +414,10 @@ def list_users():
 # Exemplo de uso
 status, result = register_user("maria@empresa.com", "Senha123", "USER")
 print(f"Registro: {status} - {result}")
+
+admin_creds = base64.b64encode("master@erp.com:Master@123".encode()).decode()
+status, result = create_user("pedro@empresa.com", "Senha123", "USER", admin_creds)
+print(f"Criação: {status} - {result}")
 
 status, users = list_users()
 print(f"Usuários: {status} - {users}")
@@ -331,6 +444,29 @@ public class ERPClient {
         HttpRequest request = HttpRequest.newBuilder()
             .uri(URI.create(BASE_URL + "/api/users/register"))
             .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(json))
+            .build();
+        
+        HttpResponse<String> response = client.send(request, 
+            HttpResponse.BodyHandlers.ofString());
+        
+        return response.body();
+    }
+    
+    public static String createUser(String email, String password, String role, 
+                                   String adminEmail, String adminPassword) throws Exception {
+        String json = String.format(
+            "{\"email\":\"%s\",\"password\":\"%s\",\"role\":\"%s\"}",
+            email, password, role
+        );
+        
+        String credentials = Base64.getEncoder()
+            .encodeToString((adminEmail + ":" + adminPassword).getBytes());
+        
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(BASE_URL + "/api/users/create"))
+            .header("Content-Type", "application/json")
+            .header("Authorization", "Basic " + credentials)
             .POST(HttpRequest.BodyPublishers.ofString(json))
             .build();
         
@@ -388,6 +524,32 @@ class ERPClient {
         return ['code' => $httpCode, 'response' => $response];
     }
     
+    public function createUser($email, $password, $role, $adminEmail, $adminPassword) {
+        $data = [
+            'email' => $email,
+            'password' => $password,
+            'role' => $role
+        ];
+        
+        $credentials = base64_encode($adminEmail . ':' . $adminPassword);
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $this->baseUrl . '/api/users/create');
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json',
+            'Authorization: Basic ' . $credentials
+        ]);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        
+        return ['code' => $httpCode, 'response' => $response];
+    }
+    
     public function listUsers($email, $password) {
         $credentials = base64_encode($email . ':' . $password);
         
@@ -412,6 +574,10 @@ $client = new ERPClient();
 // Registrar usuário
 $result = $client->registerUser('pedro@empresa.com', 'Senha123', 'USER');
 echo "Registro: " . $result['code'] . " - " . $result['response'] . "\n";
+
+// Criar usuário (admin)
+$result = $client->createUser('ana@empresa.com', 'Senha123', 'USER', 'master@erp.com', 'Master@123');
+echo "Criação: " . $result['code'] . " - " . $result['response'] . "\n";
 
 // Listar usuários
 $users = $client->listUsers('master@erp.com', 'Master@123');
@@ -452,6 +618,33 @@ echo "Usuários: " . print_r($users, true) . "\n";
           "host": ["localhost"],
           "port": "8081",
           "path": ["api", "users", "register"]
+        }
+      }
+    },
+    {
+      "name": "Criar Usuário (Admin)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Basic {{admin_credentials}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"novo@empresa.com\",\n  \"password\": \"123456\",\n  \"role\": \"USER\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8081/api/users/create",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8081",
+          "path": ["api", "users", "create"]
         }
       }
     },
@@ -498,6 +691,10 @@ echo "Usuários: " . print_r($users, true) . "\n";
     {
       "key": "credentials",
       "value": "bWFzdGVyQGVycC5jb206TWFzdGVyQDEyMw=="
+    },
+    {
+      "key": "admin_credentials",
+      "value": "bWFzdGVyQGVycC5jb206TWFzdGVyQDEyMw=="
     }
   ]
 }
@@ -510,8 +707,9 @@ echo "Usuários: " . print_r($users, true) . "\n";
 1. **Autenticação**: Apenas HTTP Basic (não JWT)
 2. **Validação**: Validação básica de email único
 3. **Roles**: Apenas ADMIN e USER
-4. **Endpoints**: Limitados a operações básicas de usuário
+4. **Endpoints**: Operações básicas de usuário
 5. **Segurança**: Sem rate limiting ou validação avançada
+6. **Autorização**: Endpoint /create restrito apenas para ADMIN
 
 ---
 
@@ -522,14 +720,16 @@ echo "Usuários: " . print_r($users, true) . "\n";
 - [ ] Validação de entrada com Bean Validation
 - [ ] Rate limiting
 - [ ] Logs de auditoria
+- [ ] Endpoints para atualização e exclusão de usuários
 
 ### v1.2 (Planejado)
 - [ ] Gestão de produtos
 - [ ] Controle de estoque
 - [ ] Relatórios básicos
+- [ ] Sistema de permissões mais granular
 
 ---
 
 **Autor**: ThiagoMartins2001  
 **Versão da API**: 1.0  
-**Última Atualização**: $(date)
+**Última Atualização**: Dezembro 2024

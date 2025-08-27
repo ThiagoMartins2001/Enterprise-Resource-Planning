@@ -132,6 +132,12 @@ public class UserController {
     public ResponseEntity<List<User>> listAllUsers() {
         // Listagem de usuários
     }
+    
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/create")
+    public ResponseEntity<String> createUser(@RequestBody User user) {
+        // Criação de usuário (apenas ADMIN)
+    }
 }
 ```
 
@@ -153,6 +159,25 @@ public class UserController {
   - `409 Conflict`: Email já existe
   - `400 Bad Request`: Dados inválidos
 
+#### POST /api/users/create
+- **Função**: Cria novo usuário (apenas administradores)
+- **Autorização**: `@PreAuthorize("hasRole('ADMIN')")`
+- **Content-Type**: application/json
+- **Autenticação**: HTTP Basic (apenas ADMIN)
+- **Corpo**:
+```json
+{
+  "email": "novo@empresa.com",
+  "password": "senha123",
+  "role": "USER"
+}
+```
+- **Respostas**:
+  - `201 Created`: Usuário criado com sucesso
+  - `409 Conflict`: Email já existe
+  - `403 Forbidden`: Acesso negado (não é ADMIN)
+  - `401 Unauthorized`: Autenticação necessária
+
 #### GET /api/users/login
 - **Função**: Endpoint de autenticação
 - **Autenticação**: HTTP Basic
@@ -167,6 +192,7 @@ public class UserController {
 ```java
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -192,6 +218,7 @@ public class SecurityConfig {
 - **Autenticação**: HTTP Basic
 - **Endpoints Públicos**: Recursos estáticos
 - **Criptografia**: BCrypt com força padrão (10 rounds)
+- **Method Security**: Habilitado para `@PreAuthorize`
 
 ### 6. **CustomUserDetailsService.java** - Autenticação Customizada
 ```java
@@ -221,6 +248,39 @@ public class CustomUserDetailsService implements UserDetailsService {
 - **Carregamento de Usuários**: Do banco de dados
 - **Autoridades**: Conversão de roles para Spring Security
 - **Tratamento de Erros**: UsernameNotFoundException
+
+## Sistema de Autorização
+
+### Roles e Permissões
+O sistema implementa um sistema de autorização baseado em roles (RBAC - Role-Based Access Control):
+
+#### Roles Disponíveis:
+- **ADMIN**: Acesso total ao sistema
+- **USER**: Acesso limitado
+
+#### Endpoints por Role:
+
+| Endpoint | ADMIN | USER | Público |
+|----------|-------|------|---------|
+| POST /api/users/register | ✅ | ✅ | ✅ |
+| POST /api/users/create | ✅ | ❌ | ❌ |
+| GET /api/users/login | ✅ | ✅ | ❌ |
+| GET /api/users/listAll | ✅ | ✅ | ❌ |
+
+### Anotação @PreAuthorize
+```java
+@PreAuthorize("hasRole('ADMIN')")
+@PostMapping("/create")
+public ResponseEntity<String> createUser(@RequestBody User user) {
+    // Apenas usuários com role ADMIN podem acessar
+}
+```
+
+**Funcionalidades:**
+- **hasRole('ADMIN')**: Verifica se o usuário tem a role ADMIN
+- **hasRole('USER')**: Verifica se o usuário tem a role USER
+- **hasAnyRole('ADMIN', 'USER')**: Verifica se o usuário tem qualquer uma das roles
+- **isAuthenticated()**: Verifica se o usuário está autenticado
 
 ## Integração com Banco de Dados
 
@@ -289,7 +349,7 @@ INSERT INTO users (email, password, role) VALUES
 ('master@erp.com', '$2a$10$...', 'ADMIN');
 ```
 
-## Fluxo de Autenticação
+## Fluxo de Autenticação e Autorização
 
 ```
 1. Cliente faz requisição com credenciais
@@ -302,7 +362,9 @@ INSERT INTO users (email, password, role) VALUES
    ↓
 5. Authorities são criadas baseadas no role
    ↓
-6. Acesso é concedido/negado
+6. @PreAuthorize verifica permissões
+   ↓
+7. Acesso é concedido/negado
 ```
 
 ## Logs e Monitoramento
@@ -311,10 +373,12 @@ INSERT INTO users (email, password, role) VALUES
 - **SQL**: Habilitado (`spring.jpa.show-sql=true`)
 - **Hibernate**: DDL automático
 - **Spring Boot**: Logs padrão
+- **Spring Security**: Logs de autenticação e autorização
 
 ### Pontos de Monitoramento
 - **Registro de Usuários**: Logs de criação
 - **Autenticação**: Sucessos e falhas
+- **Autorização**: Acessos negados por role
 - **Banco de Dados**: Queries executadas
 
 ## Testes
@@ -326,6 +390,12 @@ curl -X POST http://localhost:8081/api/users/register \
   -H "Content-Type: application/json" \
   -d '{"email":"teste@exemplo.com","password":"123456","role":"USER"}'
 
+# Criação de usuário (admin)
+curl -X POST http://localhost:8081/api/users/create \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Basic bWFzdGVyQGVycC5jb206TWFzdGVyQDEyMw==" \
+  -d '{"email":"novo@empresa.com","password":"123456","role":"USER"}'
+
 # Login (HTTP Basic)
 curl -u teste@exemplo.com:123456 \
   http://localhost:8081/api/users/login
@@ -333,6 +403,16 @@ curl -u teste@exemplo.com:123456 \
 # Listar usuários (autenticado)
 curl -u master@erp.com:Master@123 \
   http://localhost:8081/api/users/listAll
+```
+
+### Testes de Autorização
+```bash
+# Tentativa de criar usuário sem ser ADMIN
+curl -X POST http://localhost:8081/api/users/create \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Basic dGVzdGVAdGVzdGUuY29tOjEyMzQ1Ng==" \
+  -d '{"email":"teste@empresa.com","password":"123456","role":"USER"}'
+# Resposta esperada: 403 Forbidden
 ```
 
 ## Considerações de Segurança
@@ -343,13 +423,18 @@ curl -u master@erp.com:Master@123 \
 - ✅ Autorização baseada em roles
 - ✅ Validação de email único
 - ✅ Endpoints protegidos
+- ✅ Method-level security com @PreAuthorize
+- ✅ Separação de responsabilidades (register vs create)
 
 ### Recomendações Futuras
 - 🔒 Implementar JWT tokens
 - 🔒 Rate limiting
-- 🔒 Validação de entrada
+- 🔒 Validação de entrada com Bean Validation
 - 🔒 Logs de auditoria
 - 🔒 HTTPS em produção
+- 🔒 Sistema de permissões mais granular
+- 🔒 Refresh tokens
+- 🔒 MFA (Multi-Factor Authentication)
 
 ## Performance
 
@@ -357,11 +442,13 @@ curl -u master@erp.com:Master@123 \
 - **Connection Pool**: HikariCP (padrão Spring Boot)
 - **Lazy Loading**: JPA/Hibernate
 - **Índices**: Email único
+- **Method Security**: Cache de autoridades
 
 ### Monitoramento
 - **Queries**: Logs habilitados
 - **Tempo de Resposta**: Logs do Spring Boot
 - **Memória**: JVM padrão
+- **Autorização**: Logs de decisões de acesso
 
 ## Deploy e Produção
 
@@ -371,6 +458,7 @@ curl -u master@erp.com:Master@123 \
 spring.jpa.show-sql=false
 spring.jpa.hibernate.ddl-auto=validate
 logging.level.root=WARN
+logging.level.org.springframework.security=INFO
 server.port=8080
 ```
 
@@ -381,8 +469,22 @@ export DB_HOST=production-db-host
 export DB_PASSWORD=secure-password
 ```
 
+## Novas Funcionalidades Implementadas
+
+### Endpoint POST /api/users/create
+- **Propósito**: Criação de usuários por administradores
+- **Segurança**: Restrito apenas para usuários com role ADMIN
+- **Diferença do /register**: Requer autenticação e autorização específica
+- **Uso**: Para administradores criarem novos usuários no sistema
+
+### Sistema de Autorização Aprimorado
+- **@PreAuthorize**: Anotação para controle granular de acesso
+- **Method Security**: Segurança em nível de método
+- **Role-based Access**: Controle baseado em roles
+- **Separação de Responsabilidades**: Register público vs Create restrito
+
 ---
 
 **Autor**: ThiagoMartins2001  
 **Versão**: 1.0  
-**Data**: $(date)
+**Data**: Dezembro 2024

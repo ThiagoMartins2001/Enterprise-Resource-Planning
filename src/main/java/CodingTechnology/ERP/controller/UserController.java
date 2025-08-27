@@ -4,6 +4,7 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -38,5 +39,15 @@ public class UserController {
     public ResponseEntity<List<User>> listAllUsers() {
         List<User> users = userService.findAllUsers();
         return new ResponseEntity<>(users, HttpStatus.OK);
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/create")
+    public ResponseEntity<String> createUser(@RequestBody User user) { 
+        if (userService.findByEmail(user.getEmail()) != null) { 
+            return new ResponseEntity<>("Email already in use:", HttpStatus.CONFLICT);
+        }
+        userService.saveUser(user);
+        return new ResponseEntity<>("User created successfully:", HttpStatus.CREATED);
     }
 }

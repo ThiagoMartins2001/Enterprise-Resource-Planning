@@ -60,10 +60,12 @@ Localização: `src/main/java/CodingTechnology/ERP/controller/`
 ##### UserController.java
 - **Função**: Controlador REST que expõe endpoints da API
 - **Endpoints**:
-  - `POST /api/users/register`: Registra novo usuário
+  - `POST /api/users/register`: Registra novo usuário (público)
+  - `POST /api/users/create`: Cria novo usuário (apenas ADMIN)
   - `GET /api/users/login`: Endpoint de login (simulado)
   - `GET /api/users/listAll`: Lista todos os usuários
-- **Respostas**: HTTP Status codes apropriados (201, 200, 409)
+- **Respostas**: HTTP Status codes apropriados (201, 200, 409, 403)
+- **Autorização**: Sistema de roles com @PreAuthorize
 
 #### 5. **Security (Segurança)**
 Localização: `src/main/java/CodingTechnology/ERP/security/`
@@ -76,6 +78,7 @@ Localização: `src/main/java/CodingTechnology/ERP/security/`
   - Define endpoints públicos e protegidos
   - Configura BCrypt para criptografia de senhas
   - Configura DaoAuthenticationProvider
+  - Habilita Method Security com @EnableMethodSecurity
 
 ##### CustomUserDetailsService.java
 - **Função**: Serviço customizado para autenticação de usuários
@@ -119,6 +122,7 @@ Localização: `src/main/java/CodingTechnology/ERP/`
 
 ### 1. **Registro de Usuário**
 - **Endpoint**: `POST /api/users/register`
+- **Acesso**: Público
 - **Corpo da Requisição**:
 ```json
 {
@@ -131,15 +135,51 @@ Localização: `src/main/java/CodingTechnology/ERP/`
   - 201: Usuário registrado com sucesso
   - 409: Email já em uso
 
-### 2. **Login de Usuário**
+### 2. **Criação de Usuário (Admin)**
+- **Endpoint**: `POST /api/users/create`
+- **Acesso**: Apenas ADMIN
+- **Autenticação**: HTTP Basic obrigatória
+- **Corpo da Requisição**:
+```json
+{
+  "email": "novo@empresa.com",
+  "password": "senha123",
+  "role": "USER"
+}
+```
+- **Resposta**: 
+  - 201: Usuário criado com sucesso
+  - 409: Email já em uso
+  - 403: Acesso negado (não é ADMIN)
+  - 401: Autenticação necessária
+
+### 3. **Login de Usuário**
 - **Endpoint**: `GET /api/users/login`
 - **Autenticação**: HTTP Basic
 - **Resposta**: 200 - Acesso confirmado
 
-### 3. **Listagem de Usuários**
+### 4. **Listagem de Usuários**
 - **Endpoint**: `GET /api/users/listAll`
 - **Autenticação**: Obrigatória
 - **Resposta**: Lista de todos os usuários (200)
+
+## Sistema de Autorização
+
+### Roles Disponíveis
+- **ADMIN**: Acesso total ao sistema
+- **USER**: Acesso limitado
+
+### Matriz de Permissões
+
+| Endpoint | ADMIN | USER | Público |
+|----------|-------|------|---------|
+| POST /api/users/register | ✅ | ✅ | ✅ |
+| POST /api/users/create | ✅ | ❌ | ❌ |
+| GET /api/users/login | ✅ | ✅ | ❌ |
+| GET /api/users/listAll | ✅ | ✅ | ❌ |
+
+### Anotação @PreAuthorize
+O sistema utiliza a anotação `@PreAuthorize("hasRole('ADMIN')")` para controlar o acesso ao endpoint `/create`, garantindo que apenas administradores possam criar novos usuários.
 
 ## Segurança
 
@@ -152,6 +192,7 @@ Localização: `src/main/java/CodingTechnology/ERP/`
 - **Sistema**: Role-based (RBAC)
 - **Roles Disponíveis**: ADMIN, USER
 - **Endpoints Protegidos**: Todos exceto recursos estáticos
+- **Method Security**: Controle granular com @PreAuthorize
 
 ### Endpoints Públicos
 - `/` - Página inicial
@@ -186,6 +227,43 @@ mvn spring-boot:run
 - **Email**: master@erp.com
 - **Senha**: Master@123
 - **Role**: ADMIN
+
+## Exemplos de Uso
+
+### Registro de Usuário (Público)
+```bash
+curl -X POST http://localhost:8081/api/users/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "joao@empresa.com",
+    "password": "MinhaSenha123",
+    "role": "USER"
+  }'
+```
+
+### Criação de Usuário (Admin)
+```bash
+curl -X POST http://localhost:8081/api/users/create \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Basic bWFzdGVyQGVycC5jb206TWFzdGVyQDEyMw==" \
+  -d '{
+    "email": "maria@empresa.com",
+    "password": "Senha123",
+    "role": "USER"
+  }'
+```
+
+### Login
+```bash
+curl -u joao@empresa.com:MinhaSenha123 \
+  http://localhost:8081/api/users/login
+```
+
+### Listar Usuários
+```bash
+curl -u master@erp.com:Master@123 \
+  http://localhost:8081/api/users/listAll
+```
 
 ## Estrutura de Arquivos
 
@@ -232,6 +310,20 @@ ERP/
 - `lombok`: Redução de boilerplate
 - `spring-security-test`: Testes de segurança
 
+## Novas Funcionalidades Implementadas
+
+### Endpoint POST /api/users/create
+- **Propósito**: Criação de usuários por administradores
+- **Segurança**: Restrito apenas para usuários com role ADMIN
+- **Diferença do /register**: Requer autenticação e autorização específica
+- **Uso**: Para administradores criarem novos usuários no sistema
+
+### Sistema de Autorização Aprimorado
+- **@PreAuthorize**: Anotação para controle granular de acesso
+- **Method Security**: Segurança em nível de método
+- **Role-based Access**: Controle baseado em roles
+- **Separação de Responsabilidades**: Register público vs Create restrito
+
 ## Funcionalidades Futuras Sugeridas
 
 1. **Gestão de Produtos**
@@ -242,9 +334,12 @@ ERP/
 6. **Auditoria de Logs**
 7. **API REST mais robusta**
 8. **Interface Web moderna**
+9. **JWT Authentication**
+10. **Sistema de permissões mais granular**
 
 ## Contato
 **Autor**: ThiagoMartins2001
 
 ---
-*Documentação gerada em: $(date)*
+
+*Documentação gerada em: Dezembro 2024*
