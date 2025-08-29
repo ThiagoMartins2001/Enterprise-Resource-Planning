@@ -12,88 +12,7 @@
 
 ## Endpoints Disponíveis
 
-### 1. Registro de Usuário
-
-#### POST /api/users/register
-Registra um novo usuário no sistema.
-
-**URL**: `http://localhost:8081/api/users/register`
-
-**Método**: `POST`
-
-**Headers**:
-```
-Content-Type: application/json
-```
-
-**Corpo da Requisição**:
-```json
-{
-  "email": "usuario@exemplo.com",
-  "password": "senha123",
-  "role": "USER"
-}
-```
-
-**Parâmetros**:
-- `email` (string, obrigatório): Email único do usuário
-- `password` (string, obrigatório): Senha do usuário (será criptografada)
-- `role` (string, obrigatório): Papel do usuário (ADMIN ou USER)
-
-**Respostas**:
-
-**Sucesso (201 Created)**:
-```json
-"User registered successfully!"
-```
-
-**Erro - Email já existe (409 Conflict)**:
-```json
-"Email already in use!"
-```
-
-**Erro - Dados inválidos (400 Bad Request)**:
-```json
-{
-  "timestamp": "2024-01-01T12:00:00.000+00:00",
-  "status": 400,
-  "error": "Bad Request",
-  "message": "Validation failed"
-}
-```
-
-**Exemplo de Uso (cURL)**:
-```bash
-curl -X POST http://localhost:8081/api/users/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "joao@empresa.com",
-    "password": "MinhaSenha123",
-    "role": "USER"
-  }'
-```
-
-**Exemplo de Uso (JavaScript)**:
-```javascript
-fetch('http://localhost:8081/api/users/register', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-    email: 'joao@empresa.com',
-    password: 'MinhaSenha123',
-    role: 'USER'
-  })
-})
-.then(response => response.text())
-.then(data => console.log(data))
-.catch(error => console.error('Erro:', error));
-```
-
----
-
-### 2. Criação de Usuário (Admin)
+### 1. Criação de Usuário (Admin)
 
 #### POST /api/users/create
 Cria um novo usuário no sistema (apenas para administradores).
@@ -306,6 +225,81 @@ fetch('http://localhost:8081/api/users/listAll', {
 
 ---
 
+### 5. Exclusão de Usuário (Admin)
+
+#### DELETE /api/users/delete/{email}
+Remove um usuário do sistema por email (apenas para administradores).
+
+**URL**: `http://localhost:8081/api/users/delete/{email}`
+
+**Método**: `DELETE`
+
+**Autenticação**: Obrigatória (apenas ADMIN)
+
+**Headers**:
+```
+Authorization: Basic <base64(email:password)>
+```
+
+**Parâmetros**:
+- `email` (string, obrigatório): Email do usuário a ser removido (path variable)
+
+**Respostas**:
+
+**Sucesso (200 OK)**:
+```json
+"User deleted successfully!"
+```
+
+**Erro - Usuário não encontrado (404 Not Found)**:
+```json
+"User not found"
+```
+
+**Erro - Acesso negado (403 Forbidden)**:
+```json
+{
+  "timestamp": "2024-01-01T12:00:00.000+00:00",
+  "status": 403,
+  "error": "Forbidden",
+  "message": "Access Denied"
+}
+```
+
+**Erro - Não autorizado (401 Unauthorized)**:
+```json
+{
+  "timestamp": "2024-01-01T12:00:00.000+00:00",
+  "status": 401,
+  "error": "Unauthorized",
+  "message": "Full authentication is required to access this resource"
+}
+```
+
+**Exemplo de Uso (cURL)**:
+```bash
+curl -X DELETE \
+  -H "Authorization: Basic bWFzdGVyQGVycC5jb206TWFzdGVyQDEyMw==" \
+  http://localhost:8081/api/users/delete/maria@empresa.com
+```
+
+**Exemplo de Uso (JavaScript)**:
+```javascript
+const credentials = btoa('master@erp.com:Master@123');
+
+fetch('http://localhost:8081/api/users/delete/maria@empresa.com', {
+  method: 'DELETE',
+  headers: {
+    'Authorization': `Basic ${credentials}`
+  }
+})
+.then(response => response.text())
+.then(data => console.log(data))
+.catch(error => console.error('Erro:', error));
+```
+
+---
+
 ## Códigos de Status HTTP
 
 | Código | Descrição | Quando Ocorre |
@@ -314,8 +308,8 @@ fetch('http://localhost:8081/api/users/listAll', {
 | 201 | Created | Usuário criado com sucesso |
 | 400 | Bad Request | Dados inválidos na requisição |
 | 401 | Unauthorized | Autenticação necessária ou falhou |
-| 403 | Forbidden | Acesso negado (endpoint /create apenas para ADMIN) |
-| 404 | Not Found | Endpoint não encontrado |
+| 403 | Forbidden | Acesso negado (endpoints /create e /delete apenas para ADMIN) |
+| 404 | Not Found | Endpoint não encontrado ou usuário não encontrado |
 | 409 | Conflict | Email já existe |
 | 500 | Internal Server Error | Erro interno do servidor |
 
@@ -365,21 +359,21 @@ headers = {
     "Authorization": f"Basic {credentials}"
 }
 
-# Registrar usuário
-def register_user(email, password, role):
-    data = {
-        "email": email,
-        "password": password,
-        "role": role
-    }
-    
-    response = requests.post(
-        f"{base_url}/api/users/register",
-        json=data,
-        headers={"Content-Type": "application/json"}
-    )
-    
-    return response.status_code, response.text
+# Registrar usuário (removido - endpoint não existe mais)
+# def register_user(email, password, role):
+#     data = {
+#         "email": email,
+#         "password": password,
+#         "role": role
+#     }
+#     
+#     response = requests.post(
+#         f"{base_url}/api/users/register",
+#         json=data,
+#         headers={"Content-Type": "application/json"}
+#     )
+#     
+#     return response.status_code, response.text
 
 # Criar usuário (admin)
 def create_user(email, password, role, admin_credentials):
@@ -411,9 +405,18 @@ def list_users():
     
     return response.status_code, response.json()
 
+# Excluir usuário (admin)
+def delete_user(email, admin_credentials):
+    response = requests.delete(
+        f"{base_url}/api/users/delete/{email}",
+        headers={"Authorization": f"Basic {admin_credentials}"}
+    )
+    
+    return response.status_code, response.text
+
 # Exemplo de uso
-status, result = register_user("maria@empresa.com", "Senha123", "USER")
-print(f"Registro: {status} - {result}")
+# status, result = register_user("maria@empresa.com", "Senha123", "USER")
+# print(f"Registro: {status} - {result}")
 
 admin_creds = base64.b64encode("master@erp.com:Master@123".encode()).decode()
 status, result = create_user("pedro@empresa.com", "Senha123", "USER", admin_creds)
@@ -421,6 +424,9 @@ print(f"Criação: {status} - {result}")
 
 status, users = list_users()
 print(f"Usuários: {status} - {users}")
+
+status, result = delete_user("pedro@empresa.com", admin_creds)
+print(f"Exclusão: {status} - {result}")
 ```
 
 ### Java (HttpClient)
@@ -435,23 +441,24 @@ public class ERPClient {
     private static final String BASE_URL = "http://localhost:8081";
     private static final HttpClient client = HttpClient.newHttpClient();
     
-    public static String registerUser(String email, String password, String role) throws Exception {
-        String json = String.format(
-            "{\"email\":\"%s\",\"password\":\"%s\",\"role\":\"%s\"}",
-            email, password, role
-        );
-        
-        HttpRequest request = HttpRequest.newBuilder()
-            .uri(URI.create(BASE_URL + "/api/users/register"))
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(json))
-            .build();
-        
-        HttpResponse<String> response = client.send(request, 
-            HttpResponse.BodyHandlers.ofString());
-        
-        return response.body();
-    }
+    // Método registerUser removido - endpoint não existe mais
+    // public static String registerUser(String email, String password, String role) throws Exception {
+    //     String json = String.format(
+    //         "{\"email\":\"%s\",\"password\":\"%s\",\"role\":\"%s\"}",
+    //         email, password, role
+    //     );
+    //     
+    //     HttpRequest request = HttpRequest.newBuilder()
+    //         .uri(URI.create(BASE_URL + "/api/users/register"))
+    //         .header("Content-Type", "application/json")
+    //         .POST(HttpRequest.BodyPublishers.ofString(json))
+    //         .build();
+    //     
+    //     HttpResponse<String> response = client.send(request, 
+    //         HttpResponse.BodyHandlers.ofString());
+    //     
+    //     return response.body();
+    // }
     
     public static String createUser(String email, String password, String role, 
                                    String adminEmail, String adminPassword) throws Exception {
@@ -491,6 +498,22 @@ public class ERPClient {
         
         return response.body();
     }
+    
+    public static String deleteUser(String email, String adminEmail, String adminPassword) throws Exception {
+        String credentials = Base64.getEncoder()
+            .encodeToString((adminEmail + ":" + adminPassword).getBytes());
+        
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(BASE_URL + "/api/users/delete/" + email))
+            .header("Authorization", "Basic " + credentials)
+            .DELETE()
+            .build();
+        
+        HttpResponse<String> response = client.send(request, 
+            HttpResponse.BodyHandlers.ofString());
+        
+        return response.body();
+    }
 }
 ```
 
@@ -501,28 +524,29 @@ public class ERPClient {
 class ERPClient {
     private $baseUrl = 'http://localhost:8081';
     
-    public function registerUser($email, $password, $role) {
-        $data = [
-            'email' => $email,
-            'password' => $password,
-            'role' => $role
-        ];
-        
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $this->baseUrl . '/api/users/register');
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/json'
-        ]);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-        
-        return ['code' => $httpCode, 'response' => $response];
-    }
+    // Método registerUser removido - endpoint não existe mais
+    // public function registerUser($email, $password, $role) {
+    //     $data = [
+    //         'email' => $email,
+    //         'password' => $password,
+    //         'role' => $role
+    //     ];
+    //     
+    //     $ch = curl_init();
+    //     curl_setopt($ch, CURLOPT_URL, $this->baseUrl . '/api/users/register');
+    //     curl_setopt($ch, CURLOPT_POST, true);
+    //     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+    //     curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    //         'Content-Type: application/json'
+    //     ]);
+    //     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    //     
+    //     $response = curl_exec($ch);
+    //     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    //     curl_close($ch);
+    //     
+    //     return ['code' => $httpCode, 'response' => $response];
+    // }
     
     public function createUser($email, $password, $role, $adminEmail, $adminPassword) {
         $data = [
@@ -566,14 +590,32 @@ class ERPClient {
         
         return ['code' => $httpCode, 'response' => json_decode($response, true)];
     }
+    
+    public function deleteUser($email, $adminEmail, $adminPassword) {
+        $credentials = base64_encode($adminEmail . ':' . $adminPassword);
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $this->baseUrl . '/api/users/delete/' . $email);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'DELETE');
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Authorization: Basic ' . $credentials
+        ]);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        
+        return ['code' => $httpCode, 'response' => $response];
+    }
 }
 
 // Exemplo de uso
 $client = new ERPClient();
 
-// Registrar usuário
-$result = $client->registerUser('pedro@empresa.com', 'Senha123', 'USER');
-echo "Registro: " . $result['code'] . " - " . $result['response'] . "\n";
+// Registrar usuário (removido - endpoint não existe mais)
+// $result = $client->registerUser('pedro@empresa.com', 'Senha123', 'USER');
+// echo "Registro: " . $result['code'] . " - " . $result['response'] . "\n";
 
 // Criar usuário (admin)
 $result = $client->createUser('ana@empresa.com', 'Senha123', 'USER', 'master@erp.com', 'Master@123');
@@ -582,6 +624,10 @@ echo "Criação: " . $result['code'] . " - " . $result['response'] . "\n";
 // Listar usuários
 $users = $client->listUsers('master@erp.com', 'Master@123');
 echo "Usuários: " . print_r($users, true) . "\n";
+
+// Excluir usuário (admin)
+$result = $client->deleteUser('ana@empresa.com', 'master@erp.com', 'Master@123');
+echo "Exclusão: " . $result['code'] . " - " . $result['response'] . "\n";
 
 ?>
 ```
@@ -598,29 +644,6 @@ echo "Usuários: " . print_r($users, true) . "\n";
     "description": "Testes da API do Sistema ERP"
   },
   "item": [
-    {
-      "name": "Registrar Usuário",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"email\": \"teste@exemplo.com\",\n  \"password\": \"123456\",\n  \"role\": \"USER\"\n}"
-        },
-        "url": {
-          "raw": "http://localhost:8081/api/users/register",
-          "protocol": "http",
-          "host": ["localhost"],
-          "port": "8081",
-          "path": ["api", "users", "register"]
-        }
-      }
-    },
     {
       "name": "Criar Usuário (Admin)",
       "request": {
@@ -685,6 +708,25 @@ echo "Usuários: " . print_r($users, true) . "\n";
           "path": ["api", "users", "listAll"]
         }
       }
+    },
+    {
+      "name": "Excluir Usuário (Admin)",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Basic {{admin_credentials}}"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8081/api/users/delete/{{email}}",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8081",
+          "path": ["api", "users", "delete", "{{email}}"]
+        }
+      }
     }
   ],
   "variable": [
@@ -695,6 +737,10 @@ echo "Usuários: " . print_r($users, true) . "\n";
     {
       "key": "admin_credentials",
       "value": "bWFzdGVyQGVycC5jb206TWFzdGVyQDEyMw=="
+    },
+    {
+      "key": "email",
+      "value": "teste@empresa.com"
     }
   ]
 }
@@ -707,9 +753,10 @@ echo "Usuários: " . print_r($users, true) . "\n";
 1. **Autenticação**: Apenas HTTP Basic (não JWT)
 2. **Validação**: Validação básica de email único
 3. **Roles**: Apenas ADMIN e USER
-4. **Endpoints**: Operações básicas de usuário
+4. **Endpoints**: Operações básicas de usuário (CRUD parcial)
 5. **Segurança**: Sem rate limiting ou validação avançada
-6. **Autorização**: Endpoint /create restrito apenas para ADMIN
+6. **Autorização**: Endpoints /create e /delete restritos apenas para ADMIN
+7. **Registro**: Sem endpoint público de registro de usuários
 
 ---
 
@@ -720,7 +767,8 @@ echo "Usuários: " . print_r($users, true) . "\n";
 - [ ] Validação de entrada com Bean Validation
 - [ ] Rate limiting
 - [ ] Logs de auditoria
-- [ ] Endpoints para atualização e exclusão de usuários
+- [ ] Endpoint para atualização de usuários
+- [ ] Endpoint público de registro de usuários
 
 ### v1.2 (Planejado)
 - [ ] Gestão de produtos

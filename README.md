@@ -41,6 +41,7 @@ Localização: `src/main/java/CodingTechnology/ERP/repository/`
 - **Métodos**:
   - `findByEmail(String email)`: Busca usuário por email
   - `existsByEmail(String email)`: Verifica se email existe
+  - `deleteByEmail(String email)`: Remove usuário por email
   - Métodos herdados: `save()`, `findAll()`, `findById()`, `delete()`
 
 #### 3. **Service (Serviço)**
@@ -52,7 +53,9 @@ Localização: `src/main/java/CodingTechnology/ERP/service/`
   - `saveUser(User user)`: Salva usuário com senha criptografada
   - `findByEmail(String email)`: Busca usuário por email
   - `findAllUsers()`: Lista todos os usuários
+  - `deleteByEmail(String email)`: Remove usuário por email
 - **Funcionalidades**: Criptografia automática de senhas usando BCrypt
+- **Transações**: Gerenciamento de transações com `@Transactional`
 
 #### 4. **Controller (Controlador)**
 Localização: `src/main/java/CodingTechnology/ERP/controller/`
@@ -60,11 +63,11 @@ Localização: `src/main/java/CodingTechnology/ERP/controller/`
 ##### UserController.java
 - **Função**: Controlador REST que expõe endpoints da API
 - **Endpoints**:
-  - `POST /api/users/register`: Registra novo usuário (público)
   - `POST /api/users/create`: Cria novo usuário (apenas ADMIN)
   - `GET /api/users/login`: Endpoint de login (simulado)
   - `GET /api/users/listAll`: Lista todos os usuários
-- **Respostas**: HTTP Status codes apropriados (201, 200, 409, 403)
+  - `DELETE /api/users/delete/{email}`: Remove usuário por email (apenas ADMIN)
+- **Respostas**: HTTP Status codes apropriados (201, 200, 409, 403, 404)
 - **Autorização**: Sistema de roles com @PreAuthorize
 
 #### 5. **Security (Segurança)**
@@ -120,22 +123,7 @@ Localização: `src/main/java/CodingTechnology/ERP/`
 
 ## Funcionalidades da API
 
-### 1. **Registro de Usuário**
-- **Endpoint**: `POST /api/users/register`
-- **Acesso**: Público
-- **Corpo da Requisição**:
-```json
-{
-  "email": "usuario@exemplo.com",
-  "password": "senha123",
-  "role": "USER"
-}
-```
-- **Resposta**: 
-  - 201: Usuário registrado com sucesso
-  - 409: Email já em uso
-
-### 2. **Criação de Usuário (Admin)**
+### 1. **Criação de Usuário (Admin)**
 - **Endpoint**: `POST /api/users/create`
 - **Acesso**: Apenas ADMIN
 - **Autenticação**: HTTP Basic obrigatória
@@ -153,15 +141,26 @@ Localização: `src/main/java/CodingTechnology/ERP/`
   - 403: Acesso negado (não é ADMIN)
   - 401: Autenticação necessária
 
-### 3. **Login de Usuário**
+### 2. **Login de Usuário**
 - **Endpoint**: `GET /api/users/login`
 - **Autenticação**: HTTP Basic
 - **Resposta**: 200 - Acesso confirmado
 
-### 4. **Listagem de Usuários**
+### 3. **Listagem de Usuários**
 - **Endpoint**: `GET /api/users/listAll`
 - **Autenticação**: Obrigatória
 - **Resposta**: Lista de todos os usuários (200)
+
+### 4. **Exclusão de Usuário (Admin)**
+- **Endpoint**: `DELETE /api/users/delete/{email}`
+- **Acesso**: Apenas ADMIN
+- **Autenticação**: HTTP Basic obrigatória
+- **Parâmetros**: `email` (path variable)
+- **Resposta**: 
+  - 200: Usuário removido com sucesso
+  - 404: Usuário não encontrado
+  - 403: Acesso negado (não é ADMIN)
+  - 401: Autenticação necessária
 
 ## Sistema de Autorização
 
@@ -173,13 +172,13 @@ Localização: `src/main/java/CodingTechnology/ERP/`
 
 | Endpoint | ADMIN | USER | Público |
 |----------|-------|------|---------|
-| POST /api/users/register | ✅ | ✅ | ✅ |
 | POST /api/users/create | ✅ | ❌ | ❌ |
 | GET /api/users/login | ✅ | ✅ | ❌ |
 | GET /api/users/listAll | ✅ | ✅ | ❌ |
+| DELETE /api/users/delete/{email} | ✅ | ❌ | ❌ |
 
 ### Anotação @PreAuthorize
-O sistema utiliza a anotação `@PreAuthorize("hasRole('ADMIN')")` para controlar o acesso ao endpoint `/create`, garantindo que apenas administradores possam criar novos usuários.
+O sistema utiliza a anotação `@PreAuthorize("hasRole('ADMIN')")` para controlar o acesso aos endpoints `/create` e `/delete/{email}`, garantindo que apenas administradores possam criar e remover usuários.
 
 ## Segurança
 
@@ -230,17 +229,6 @@ mvn spring-boot:run
 
 ## Exemplos de Uso
 
-### Registro de Usuário (Público)
-```bash
-curl -X POST http://localhost:8081/api/users/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "joao@empresa.com",
-    "password": "MinhaSenha123",
-    "role": "USER"
-  }'
-```
-
 ### Criação de Usuário (Admin)
 ```bash
 curl -X POST http://localhost:8081/api/users/create \
@@ -263,6 +251,13 @@ curl -u joao@empresa.com:MinhaSenha123 \
 ```bash
 curl -u master@erp.com:Master@123 \
   http://localhost:8081/api/users/listAll
+```
+
+### Excluir Usuário (Admin)
+```bash
+curl -X DELETE \
+  -H "Authorization: Basic bWFzdGVyQGVycC5jb206TWFzdGVyQDEyMw==" \
+  http://localhost:8081/api/users/delete/maria@empresa.com
 ```
 
 ## Estrutura de Arquivos
@@ -310,19 +305,24 @@ ERP/
 - `lombok`: Redução de boilerplate
 - `spring-security-test`: Testes de segurança
 
-## Novas Funcionalidades Implementadas
+## Funcionalidades Implementadas
 
 ### Endpoint POST /api/users/create
 - **Propósito**: Criação de usuários por administradores
 - **Segurança**: Restrito apenas para usuários com role ADMIN
-- **Diferença do /register**: Requer autenticação e autorização específica
 - **Uso**: Para administradores criarem novos usuários no sistema
+
+### Endpoint DELETE /api/users/delete/{email}
+- **Propósito**: Exclusão de usuários por administradores
+- **Segurança**: Restrito apenas para usuários com role ADMIN
+- **Parâmetros**: Email do usuário a ser removido
+- **Uso**: Para administradores removerem usuários do sistema
 
 ### Sistema de Autorização Aprimorado
 - **@PreAuthorize**: Anotação para controle granular de acesso
 - **Method Security**: Segurança em nível de método
 - **Role-based Access**: Controle baseado em roles
-- **Separação de Responsabilidades**: Register público vs Create restrito
+- **Transações**: Gerenciamento de transações com @Transactional
 
 ## Funcionalidades Futuras Sugeridas
 
@@ -336,10 +336,12 @@ ERP/
 8. **Interface Web moderna**
 9. **JWT Authentication**
 10. **Sistema de permissões mais granular**
+11. **Endpoint de registro público**
+12. **Validação de entrada com Bean Validation**
 
 ## Contato
 **Autor**: ThiagoMartins2001
 
 ---
 
-*Documentação gerada em: Dezembro 2024*
+*Documentação atualizada em: Dezembro 2024*

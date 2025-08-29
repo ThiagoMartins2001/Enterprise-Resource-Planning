@@ -5,7 +5,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,15 +22,6 @@ public class UserController {
 
     @Autowired
     private UserService userService;
-
-    @PostMapping("/register")
-    public ResponseEntity<String> registerUser(@RequestBody User user) {
-        if (userService.findByEmail(user.getEmail()) != null) {
-            return new ResponseEntity<>("Email already in use!", HttpStatus.CONFLICT);
-        }
-        userService.saveUser(user);
-        return new ResponseEntity<>("User registered successfully!", HttpStatus.CREATED);
-    }
 
     @GetMapping("/login")
     public ResponseEntity<String> loginUser(@RequestBody User user) {
@@ -49,5 +42,15 @@ public class UserController {
         }
         userService.saveUser(user);
         return new ResponseEntity<>("User created successfully:", HttpStatus.CREATED);
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @DeleteMapping("/delete/{email}")
+    public ResponseEntity<String> deleteUser(@PathVariable String email) {
+        if (userService.findByEmail(email) == null) {
+            return new ResponseEntity<>("User not found", HttpStatus.NOT_FOUND);
+        }
+        userService.deleteByEmail(email);
+        return new ResponseEntity<>("User deleted successfully!", HttpStatus.OK);
     }
 }

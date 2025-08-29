@@ -79,6 +79,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 - **Customizados**:
   - `findByEmail(String email)`: Busca por email
   - `existsByEmail(String email)`: Verifica existência por email
+  - `deleteByEmail(String email)`: Remove usuário por email
 
 ### 3. **UserService.java** - Lógica de Negócio
 ```java
@@ -102,6 +103,11 @@ public class UserService {
     public List<User> findAllUsers() {
         return userRepository.findAll();
     }
+    
+    @Transactional
+    public void deleteByEmail(String email) {
+        userRepository.deleteByEmail(email);
+    }
 }
 ```
 
@@ -118,10 +124,7 @@ public class UserController {
     @Autowired
     private UserService userService;
     
-    @PostMapping("/register")
-    public ResponseEntity<String> registerUser(@RequestBody User user) {
-        // Lógica de registro
-    }
+    // Endpoint /register removido
     
     @GetMapping("/login")
     public ResponseEntity<String> loginUser(@RequestBody User user) {
@@ -138,26 +141,16 @@ public class UserController {
     public ResponseEntity<String> createUser(@RequestBody User user) {
         // Criação de usuário (apenas ADMIN)
     }
+    
+    @PreAuthorize("hasRole('ADMIN')")
+    @DeleteMapping("/delete/{email}")
+    public ResponseEntity<String> deleteUser(@PathVariable String email) {
+        // Exclusão de usuário (apenas ADMIN)
+    }
 }
 ```
 
 **Endpoints da API:**
-
-#### POST /api/users/register
-- **Função**: Registra novo usuário
-- **Content-Type**: application/json
-- **Corpo**:
-```json
-{
-  "email": "usuario@exemplo.com",
-  "password": "senha123",
-  "role": "USER"
-}
-```
-- **Respostas**:
-  - `201 Created`: Usuário registrado com sucesso
-  - `409 Conflict`: Email já existe
-  - `400 Bad Request`: Dados inválidos
 
 #### POST /api/users/create
 - **Função**: Cria novo usuário (apenas administradores)
@@ -187,6 +180,17 @@ public class UserController {
 - **Função**: Lista todos os usuários
 - **Autenticação**: Obrigatória
 - **Resposta**: `200 OK` - Lista de usuários em JSON
+
+#### DELETE /api/users/delete/{email}
+- **Função**: Remove usuário por email (apenas administradores)
+- **Autorização**: `@PreAuthorize("hasRole('ADMIN')")`
+- **Autenticação**: HTTP Basic (apenas ADMIN)
+- **Parâmetros**: `email` (path variable)
+- **Respostas**:
+  - `200 OK`: Usuário removido com sucesso
+  - `404 Not Found`: Usuário não encontrado
+  - `403 Forbidden`: Acesso negado (não é ADMIN)
+  - `401 Unauthorized`: Autenticação necessária
 
 ### 5. **SecurityConfig.java** - Configuração de Segurança
 ```java
@@ -262,16 +266,22 @@ O sistema implementa um sistema de autorização baseado em roles (RBAC - Role-B
 
 | Endpoint | ADMIN | USER | Público |
 |----------|-------|------|---------|
-| POST /api/users/register | ✅ | ✅ | ✅ |
 | POST /api/users/create | ✅ | ❌ | ❌ |
 | GET /api/users/login | ✅ | ✅ | ❌ |
 | GET /api/users/listAll | ✅ | ✅ | ❌ |
+| DELETE /api/users/delete/{email} | ✅ | ❌ | ❌ |
 
 ### Anotação @PreAuthorize
 ```java
 @PreAuthorize("hasRole('ADMIN')")
 @PostMapping("/create")
 public ResponseEntity<String> createUser(@RequestBody User user) {
+    // Apenas usuários com role ADMIN podem acessar
+}
+
+@PreAuthorize("hasRole('ADMIN')")
+@DeleteMapping("/delete/{email}")
+public ResponseEntity<String> deleteUser(@PathVariable String email) {
     // Apenas usuários com role ADMIN podem acessar
 }
 ```
@@ -385,11 +395,6 @@ INSERT INTO users (email, password, role) VALUES
 
 ### Endpoints para Teste
 ```bash
-# Registro de usuário
-curl -X POST http://localhost:8081/api/users/register \
-  -H "Content-Type: application/json" \
-  -d '{"email":"teste@exemplo.com","password":"123456","role":"USER"}'
-
 # Criação de usuário (admin)
 curl -X POST http://localhost:8081/api/users/create \
   -H "Content-Type: application/json" \
@@ -403,6 +408,11 @@ curl -u teste@exemplo.com:123456 \
 # Listar usuários (autenticado)
 curl -u master@erp.com:Master@123 \
   http://localhost:8081/api/users/listAll
+
+# Excluir usuário (admin)
+curl -X DELETE \
+  -H "Authorization: Basic bWFzdGVyQGVycC5jb206TWFzdGVyQDEyMw==" \
+  http://localhost:8081/api/users/delete/novo@empresa.com
 ```
 
 ### Testes de Autorização
@@ -412,6 +422,12 @@ curl -X POST http://localhost:8081/api/users/create \
   -H "Content-Type: application/json" \
   -H "Authorization: Basic dGVzdGVAdGVzdGUuY29tOjEyMzQ1Ng==" \
   -d '{"email":"teste@empresa.com","password":"123456","role":"USER"}'
+# Resposta esperada: 403 Forbidden
+
+# Tentativa de excluir usuário sem ser ADMIN
+curl -X DELETE \
+  -H "Authorization: Basic dGVzdGVAdGVzdGUuY29tOjEyMzQ1Ng==" \
+  http://localhost:8081/api/users/delete/teste@empresa.com
 # Resposta esperada: 403 Forbidden
 ```
 
@@ -424,7 +440,7 @@ curl -X POST http://localhost:8081/api/users/create \
 - ✅ Validação de email único
 - ✅ Endpoints protegidos
 - ✅ Method-level security com @PreAuthorize
-- ✅ Separação de responsabilidades (register vs create)
+- ✅ Separação de responsabilidades (create vs delete)
 
 ### Recomendações Futuras
 - 🔒 Implementar JWT tokens
@@ -474,14 +490,19 @@ export DB_PASSWORD=secure-password
 ### Endpoint POST /api/users/create
 - **Propósito**: Criação de usuários por administradores
 - **Segurança**: Restrito apenas para usuários com role ADMIN
-- **Diferença do /register**: Requer autenticação e autorização específica
 - **Uso**: Para administradores criarem novos usuários no sistema
+
+### Endpoint DELETE /api/users/delete/{email}
+- **Propósito**: Exclusão de usuários por administradores
+- **Segurança**: Restrito apenas para usuários com role ADMIN
+- **Parâmetros**: Email do usuário a ser removido
+- **Uso**: Para administradores removerem usuários do sistema
 
 ### Sistema de Autorização Aprimorado
 - **@PreAuthorize**: Anotação para controle granular de acesso
 - **Method Security**: Segurança em nível de método
 - **Role-based Access**: Controle baseado em roles
-- **Separação de Responsabilidades**: Register público vs Create restrito
+- **Transações**: Gerenciamento de transações com @Transactional
 
 ---
 

@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import CodingTechnology.ERP.model.User;
 import CodingTechnology.ERP.repository.UserRepository;
+import jakarta.transaction.Transactional;
 
 @Service
 public class UserService {
@@ -29,6 +30,11 @@ public class UserService {
 
     public List<User> findAllUsers() {
         return userRepository.findAll();
+    }
+
+    @Transactional
+    public void deleteByEmail(String email) {
+        userRepository.deleteByEmail(email);
     }
 
 }

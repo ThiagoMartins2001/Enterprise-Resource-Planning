@@ -22,7 +22,6 @@ public class SecurityConfig {
         http
             .csrf().disable()
             .authorizeHttpRequests()
-            //.requestMatchers("/api/users/register").permitAll()
             .requestMatchers("/", "/index.html", "/css/**", "/js/**").permitAll() // Permite acesso a este endpoint sem autenticação
             .anyRequest().authenticated() // Todas as outras requisições precisam de autenticação
             .and()
