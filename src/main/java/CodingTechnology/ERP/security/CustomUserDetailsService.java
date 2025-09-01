@@ -20,10 +20,10 @@ public class CustomUserDetailsService implements UserDetailsService {
     private UserRepository userRepository;
 
     @Override
-    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        CodingTechnology.ERP.model.User user = userRepository.findByEmail(email);
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        CodingTechnology.ERP.model.User user = userRepository.findByUsername(username);
         if (user == null) {
-            throw new UsernameNotFoundException("Usuário não encontrado com o e-mail: " + email);
+            throw new UsernameNotFoundException("Usuário não encontrado com o e-mail: " + username);
         }
 
         List<GrantedAuthority> authorities = Collections.singletonList(

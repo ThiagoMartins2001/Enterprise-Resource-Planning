@@ -24,8 +24,8 @@ public class UserService {
         return userRepository.save(user);
     }
 
-    public User findByEmail(String email) {
-        return userRepository.findByEmail(email);
+    public User findByUsername(String username) {
+        return userRepository.findByUsername(username);
     }
 
     public List<User> findAllUsers() {
@@ -33,8 +33,8 @@ public class UserService {
     }
 
     @Transactional
-    public void deleteByEmail(String email) {
-        userRepository.deleteByEmail(email);
+    public void deleteByUsername(String username) {
+        userRepository.deleteByUsername(username);
     }
 
 }
