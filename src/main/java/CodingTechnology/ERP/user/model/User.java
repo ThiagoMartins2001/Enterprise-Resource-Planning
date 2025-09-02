@@ -1,4 +1,4 @@
-package CodingTechnology.ERP.model;
+package CodingTechnology.ERP.user.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

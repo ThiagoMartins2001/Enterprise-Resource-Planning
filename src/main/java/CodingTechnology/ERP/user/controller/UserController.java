@@ -1,4 +1,4 @@
-package CodingTechnology.ERP.controller;
+package CodingTechnology.ERP.user.controller;
 
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,8 +13,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import CodingTechnology.ERP.model.User;
-import CodingTechnology.ERP.service.UserService;
+import CodingTechnology.ERP.user.model.User;
+import CodingTechnology.ERP.user.service.UserService;
 
 @RestController
 @RequestMapping("/api/users")

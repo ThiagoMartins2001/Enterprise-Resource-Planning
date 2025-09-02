@@ -1,4 +1,4 @@
-package CodingTechnology.ERP.security;
+package CodingTechnology.ERP.auth.security;
 
 import java.util.Collections;
 import java.util.List;
@@ -11,7 +11,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
-import CodingTechnology.ERP.repository.UserRepository;
+import CodingTechnology.ERP.user.repository.UserRepository;
 
 @Service
 public class CustomUserDetailsService implements UserDetailsService {
@@ -21,7 +21,7 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        CodingTechnology.ERP.model.User user = userRepository.findByUsername(username);
+        CodingTechnology.ERP.user.model.User user = userRepository.findByUsername(username);
         if (user == null) {
             throw new UsernameNotFoundException("Usuário não encontrado com o e-mail: " + username);
         }

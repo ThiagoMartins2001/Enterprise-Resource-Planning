@@ -1,14 +1,14 @@
-package CodingTechnology.ERP.repository;
+package CodingTechnology.ERP.user.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import CodingTechnology.ERP.model.User;
+import CodingTechnology.ERP.user.model.User;
 import jakarta.transaction.Transactional;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
-    User findByUsername(String username);;
+    User findByUsername(String username);
     boolean existsByUsername(String username);
     
     @Transactional
