@@ -13,6 +13,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import CodingTechnology.ERP.user.repository.UserRepository;
+import CodingTechnology.ERP.user.model.User;
 
 @Configuration
 @RequiredArgsConstructor
