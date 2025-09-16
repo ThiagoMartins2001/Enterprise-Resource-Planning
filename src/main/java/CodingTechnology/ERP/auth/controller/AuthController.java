@@ -11,8 +11,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import CodingTechnology.ERP.auth.DTO.AuthRequest;
 import CodingTechnology.ERP.auth.service.JwtService;
+import CodingTechnology.ERP.auth.DTO.AuthRequest;
 
 import java.util.HashMap;
 import java.util.Map;

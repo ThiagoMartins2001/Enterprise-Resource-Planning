@@ -36,7 +36,6 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private String role;
 
-    // --- Métodos obrigatórios da interface UserDetails ---
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
