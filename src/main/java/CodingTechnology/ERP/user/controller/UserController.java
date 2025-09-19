@@ -23,11 +23,6 @@ public class UserController {
     @Autowired
     private UserService userService;
 
-    @GetMapping("/login")
-    public ResponseEntity<String> loginUser(@RequestBody User user) {
-        return new ResponseEntity<>("You have successfully accessed a secure endpoint!", HttpStatus.OK);
-    }
-
     @GetMapping("/listAll")
     public ResponseEntity<List<User>> listAllUsers() {
         List<User> users = userService.findAllUsers();

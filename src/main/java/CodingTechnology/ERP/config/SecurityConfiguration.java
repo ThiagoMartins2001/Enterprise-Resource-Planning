@@ -1,4 +1,3 @@
-// SecurityConfiguration.java
 package CodingTechnology.ERP.config;
 
 import CodingTechnology.ERP.auth.security.JwtAuthFilter;
@@ -20,7 +19,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.beans.factory.annotation.Autowired; 
 
 @Configuration
 @EnableWebSecurity
@@ -28,23 +26,19 @@ import org.springframework.beans.factory.annotation.Autowired;
 @RequiredArgsConstructor
 public class SecurityConfiguration {
 
-    private final UserRepository userRepository; 
-
-    @Autowired
-    private JwtAuthFilter jwtAuthFilter; 
-
-    @Autowired
-    private AuthenticationProvider authenticationProvider; 
-
+    private final UserRepository userRepository;
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(
+            HttpSecurity http,
+            JwtAuthFilter jwtAuthFilter, // Injetando aqui
+            AuthenticationProvider authenticationProvider // Injetando aqui
+    ) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
-                        .anyRequest().authenticated()
-                )
+                        .anyRequest().authenticated())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
