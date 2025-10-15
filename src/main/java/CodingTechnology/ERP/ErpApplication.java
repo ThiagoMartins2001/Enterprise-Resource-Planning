@@ -25,7 +25,7 @@ public class ErpApplication implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
         // Verifica se o usuário master já existe
-        if (userRepository.findByUsername("UserAdmin") == null) {
+        if (userRepository.findByUsername("UserAdmin").isEmpty()) {
             User masterUser = new User();
             masterUser.setUsername("UserAdmin");
             masterUser.setEmail("master@erp.com");

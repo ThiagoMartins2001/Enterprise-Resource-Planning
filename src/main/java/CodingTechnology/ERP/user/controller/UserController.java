@@ -32,7 +32,7 @@ public class UserController {
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/create")
     public ResponseEntity<String> createUser(@RequestBody User user) { 
-        if (userService.findByUsername(user.getUsername()) != null) { 
+        if (userService.findByUsername(user.getUsername()).isPresent()) {
             return new ResponseEntity<>("Name already in use:", HttpStatus.CONFLICT);
         }
         userService.saveUser(user);
@@ -42,7 +42,7 @@ public class UserController {
     @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/delete/{username}")
     public ResponseEntity<String> deleteUser(@PathVariable String username) {
-        if (userService.findByUsername(username) == null) {
+        if (userService.findByUsername(username).isEmpty()) {
             return new ResponseEntity<>("User not found", HttpStatus.NOT_FOUND);
         }
         userService.deleteByUsername(username);

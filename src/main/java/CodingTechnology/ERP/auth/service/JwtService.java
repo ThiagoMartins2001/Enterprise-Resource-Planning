@@ -6,12 +6,16 @@ import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
+import org.springframework.security.core.authority.SimpleGrantedAuthority; // Adicionado
+import java.util.stream.Collectors;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -20,8 +24,8 @@ import java.util.stream.Collectors;
 public class JwtService {
 
     @Value("${application.security.jwt.secret-key}")
-    private String secretKey;  
-    
+    private String secretKey;
+
     @Value("${application.security.jwt.expiration}")
     private long jwtExpiration;
 
@@ -55,13 +59,29 @@ public class JwtService {
         return claimsResolver.apply(claims);
     }
 
+    public List<? extends GrantedAuthority> extractRoles(String token) {
+        final Claims claims = extractAllClaims(token);
+
+        // O JJWT retorna a claim "roles" como List<String>
+        List<String> roles = (List<String>) claims.get("roles");
+
+        if (roles == null) {
+            return List.of(); // Retorna lista vazia se não houver roles
+        }
+
+        // Mapeia cada String de role para um objeto SimpleGrantedAuthority
+        return roles.stream()
+                .map(SimpleGrantedAuthority::new)
+                .collect(Collectors.toList());
+    }
+
     private Claims extractAllClaims(String token) {
         return Jwts
                 .parser()
-                .verifyWith(getSignInKey())
+                .setSigningKey(getSignInKey())
                 .build()
-                .parseSignedClaims(token)
-                .getPayload();
+                .parseClaimsJws(token)
+                .getBody();
     }
 
     private String buildToken(Map<String, Object> extraClaims, UserDetails userDetails, long expiration) {
@@ -76,9 +96,25 @@ public class JwtService {
     }
 
     private SecretKey getSignInKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(secretKey);
+        // try Base64 decode first (common), otherwise try hex decode
+        byte[] keyBytes;
+        try {
+            keyBytes = Decoders.BASE64.decode(secretKey);
+        } catch (Exception ex) {
+            // fall back to hex decoding
+            keyBytes = hexStringToByteArray(secretKey);
+        }
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
-    
+    private static byte[] hexStringToByteArray(String s) {
+        int len = s.length();
+        byte[] data = new byte[len / 2];
+        for (int i = 0; i < len; i += 2) {
+            data[i / 2] = (byte) ((Character.digit(s.charAt(i), 16) << 4)
+                    + Character.digit(s.charAt(i + 1), 16));
+        }
+        return data;
+    }
+
 }
