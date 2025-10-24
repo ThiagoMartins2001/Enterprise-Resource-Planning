@@ -24,9 +24,6 @@ public class User implements UserDetails {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "email", nullable = false)
-    private String email;
-
     @Column(name = "username", nullable = false, unique = true)
     private String username;
 
@@ -35,7 +32,6 @@ public class User implements UserDetails {
 
     @Column(nullable = false)
     private String role;
-
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

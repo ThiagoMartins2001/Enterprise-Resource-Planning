@@ -7,13 +7,14 @@
 
 ### Versões das Tecnologias
 - **Java**: 21 (LTS)
-- **Spring Boot**: 3.5.5
+- **Spring Boot**: 3.3.0
 - **Spring Security**: 6.x
 - **Spring Data JPA**: 3.x
 - **Hibernate**: 6.x
 - **MySQL**: 8.0
 - **Maven**: 3.x
 - **JWT**: 0.12.5
+- **Lombok**: 1.18.x
 
 ### Nova Estrutura do Projeto
 O projeto foi reorganizado para melhor separação de responsabilidades e manutenibilidade:
@@ -35,12 +36,10 @@ src/main/java/CodingTechnology/ERP/
 │   ├── DTO/                       # DTOs de autenticação
 │   │   └── AuthRequest.java
 │   └── security/                  # Componentes de segurança
-│       ├── CustomUserDetailsService.java
 │       ├── JwtAuthFilter.java
 │       └── JwtService.java
 ├── config/                        # Configurações da aplicação
-│   ├── ApplicationConfig.java
-│   └── SecurityConfig.java
+│   └── SecurityConfiguration.java
 └── ErpApplication.java            # Classe principal
 ```
 
@@ -78,8 +77,8 @@ src/main/java/CodingTechnology/ERP/
 │  │    USER     │  │    AUTH     │  │        CONFIG           │ │
 │  │   Module    │  │   Module    │  │       Module            │ │
 │  ├─────────────┤  ├─────────────┤  ├─────────────────────────┤ │
-│  │ Controller  │  │ Controller  │  │  ApplicationConfig      │ │
-│  │ Service     │  │ DTO         │  │  SecurityConfig         │ │
+│  │ Controller  │  │ Controller  │  │  SecurityConfiguration │ │
+│  │ Service     │  │ DTO         │  │                         │ │
 │  │ Repository  │  │ Security    │  │                         │ │
 │  │ Model       │  │             │  │                         │ │
 │  └─────────────┘  └─────────────┘  └─────────────────────────┘ │
@@ -100,9 +99,6 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Column(name = "email", nullable = false)
-    private String email;
-    
     @Column(name = "username", nullable = false, unique = true)
     private String username;
     
@@ -117,9 +113,9 @@ public class User {
 **Características Técnicas:**
 - **Mapeamento JPA**: Tabela `users` no banco de dados
 - **Chave Primária**: Auto-incremento (IDENTITY)
-- **Constraints**: Username único e obrigatório, email obrigatório
+- **Constraints**: Username único e obrigatório
 - **Lombok**: Anotação `@Data` gera getters, setters, equals, hashCode e toString
-- **Mudanças**: Campo `username` adicionado como identificador único
+- **Simplificação**: Removido campo `email` para focar em `username` como identificador único
 
 ### 2. **UserRepository.java** - Camada de Acesso a Dados
 **Localização**: `src/main/java/CodingTechnology/ERP/user/repository/`
@@ -127,7 +123,7 @@ public class User {
 ```java
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
-    User findByUsername(String username);
+    Optional<User> findByUsername(String username);
     boolean existsByUsername(String username);
     
     @Transactional
@@ -143,7 +139,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
   - `delete(User entity)`: Remove entidade
   - `count()`: Conta total de entidades
 - **Customizados**:
-  - `findByUsername(String username)`: Busca por username
+  - `findByUsername(String username)`: Busca por username (retorna Optional)
   - `existsByUsername(String username)`: Verifica existência por username
   - `deleteByUsername(String username)`: Remove usuário por username
 
@@ -164,7 +160,7 @@ public class UserService {
         return userRepository.save(user);
     }
     
-    public User findByUsername(String username) {
+    public Optional<User> findByUsername(String username) {
         return userRepository.findByUsername(username);
     }
     
@@ -183,7 +179,7 @@ public class UserService {
 - **Criptografia Automática**: BCrypt para todas as senhas
 - **Injeção de Dependência**: UserRepository e PasswordEncoder
 - **Transações**: Gerenciadas automaticamente pelo Spring
-- **Mudanças**: Métodos agora usam `username` em vez de `email`
+- **Optional**: Uso de Optional para tratamento seguro de valores nulos
 
 ### 4. **UserController.java** - API REST de Usuários
 **Localização**: `src/main/java/CodingTechnology/ERP/user/controller/`
@@ -195,26 +191,30 @@ public class UserController {
     @Autowired
     private UserService userService;
     
-    @GetMapping("/login")
-    public ResponseEntity<String> loginUser(@RequestBody User user) {
-        // Endpoint de login
-    }
-    
     @GetMapping("/listAll")
     public ResponseEntity<List<User>> listAllUsers() {
-        // Listagem de usuários
+        List<User> users = userService.findAllUsers();
+        return new ResponseEntity<>(users, HttpStatus.OK);
     }
     
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/create")
-    public ResponseEntity<String> createUser(@RequestBody User user) {
-        // Criação de usuário (apenas ADMIN)
+    public ResponseEntity<String> createUser(@RequestBody User user) { 
+        if (userService.findByUsername(user.getUsername()).isPresent()) {
+            return new ResponseEntity<>("Name already in use:", HttpStatus.CONFLICT);
+        }
+        userService.saveUser(user);
+        return new ResponseEntity<>("User created successfully:", HttpStatus.CREATED);
     }
     
     @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/delete/{username}")
     public ResponseEntity<String> deleteUser(@PathVariable String username) {
-        // Exclusão de usuário (apenas ADMIN)
+        if (userService.findByUsername(username).isEmpty()) {
+            return new ResponseEntity<>("User not found", HttpStatus.NOT_FOUND);
+        }
+        userService.deleteByUsername(username);
+        return new ResponseEntity<>("User deleted successfully!", HttpStatus.OK);
     }
 }
 ```
@@ -229,10 +229,9 @@ public class UserController {
 - **Corpo**:
 ```json
 {
-  "username": "novo_usuario",
-  "email": "novo@empresa.com",
-  "password": "senha123",
-  "role": "USER"
+  "username": "Usuarioteste",
+  "password": "senhaDoRh1234",
+  "role": "RH"
 }
 ```
 - **Respostas**:
@@ -240,11 +239,6 @@ public class UserController {
   - `409 Conflict`: Username já existe
   - `403 Forbidden`: Acesso negado (não é ADMIN)
   - `401 Unauthorized`: Autenticação necessária
-
-#### GET /api/users/login
-- **Função**: Endpoint de autenticação
-- **Autenticação**: JWT Bearer Token
-- **Resposta**: `200 OK` - Acesso confirmado
 
 #### GET /api/users/listAll
 - **Função**: Lista todos os usuários
@@ -275,9 +269,26 @@ public class AuthController {
     @Autowired
     private JwtService jwtService;
     
+    private static final Logger log = LoggerFactory.getLogger(AuthController.class);
+    
     @PostMapping("/login")
     public ResponseEntity<Map<String, String>> authenticateAndGetToken(@RequestBody AuthRequest authRequest) {
-        // Autenticação e geração de token JWT
+        log.debug("Login attempt for username={}", authRequest.getUsername());
+        
+        Authentication authentication = authenticationManager.authenticate(
+            new UsernamePasswordAuthenticationToken(authRequest.getUsername(), authRequest.getPassword())
+        );
+        
+        if (authentication.isAuthenticated()) {
+            UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+            String token = jwtService.generateToken(userDetails);
+            log.debug("Token generated for user {} (len={})", userDetails.getUsername(), token != null ? token.length() : 0);
+            Map<String, String> response = new HashMap<>();
+            response.put("token", token);
+            return ResponseEntity.ok(response);
+        } else {
+            return ResponseEntity.badRequest().body(Map.of("error", "Invalid credentials"));
+        }
     }
 }
 ```
@@ -291,7 +302,7 @@ public class AuthController {
 - **Corpo**:
 ```json
 {
-  "username": "master",
+  "username": "UserAdmin",
   "password": "Master@123"
 }
 ```
@@ -315,14 +326,14 @@ public class AuthRequest {
 - **Lombok**: Anotação `@Data` para geração automática de métodos
 - **Validação**: Campos para username e password
 
-### 7. **SecurityConfig.java** - Configuração de Segurança
+### 7. **SecurityConfiguration.java** - Configuração de Segurança
 **Localização**: `src/main/java/CodingTechnology/ERP/config/`
 
 ```java
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-public class SecurityConfig {
+public class SecurityConfiguration {
     @Autowired
     private JwtAuthFilter jwtAuthFilter;
     
@@ -334,9 +345,8 @@ public class SecurityConfig {
         http
             .csrf().disable()
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**").permitAll() // Endpoint de login/autenticação
-                .requestMatchers("/", "/index.html", "/css/**", "/js/**").permitAll() // Arquivos estáticos
-                .anyRequest().authenticated() // Todas as outras requisições precisam de autenticação
+                .requestMatchers("/api/auth/**").permitAll()
+                .anyRequest().authenticated()
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authenticationProvider(authenticationProvider)
@@ -350,25 +360,29 @@ public class SecurityConfig {
 **Configurações de Segurança:**
 - **CSRF**: Desabilitado para API REST
 - **Autenticação**: JWT Bearer Token
-- **Endpoints Públicos**: `/api/auth/**` e recursos estáticos
+- **Endpoints Públicos**: `/api/auth/**`
 - **Sessões**: Stateless para JWT
 - **Filtros**: JwtAuthFilter configurado
 - **Method Security**: Habilitado para `@PreAuthorize`
 
 ### 8. **JwtService.java** - Serviço JWT
-**Localização**: `src/main/java/CodingTechnology/ERP/auth/security/`
+**Localização**: `src/main/java/CodingTechnology/ERP/auth/service/`
 
 ```java
 @Service
 public class JwtService {
     @Value("${application.security.jwt.secret-key}")
-    private String secretKey;  
+    private String secretKey;
     
     @Value("${application.security.jwt.expiration}")
     private long jwtExpiration;
     
     public String generateToken(UserDetails userDetails) {
-        return buildToken(new HashMap<>(), userDetails, jwtExpiration);
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("roles", userDetails.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.toList()));
+        return buildToken(claims, userDetails, jwtExpiration);
     }
     
     public boolean isTokenValid(String token, UserDetails userDetails) {
@@ -376,16 +390,28 @@ public class JwtService {
         return (username.equals(userDetails.getUsername())) && !isTokenExpired(token);
     }
     
-    // ... outros métodos
+    public List<? extends GrantedAuthority> extractRoles(String token) {
+        final Claims claims = extractAllClaims(token);
+        List<String> roles = (List<String>) claims.get("roles");
+        
+        if (roles == null) {
+            return List.of();
+        }
+        
+        return roles.stream()
+                .map(SimpleGrantedAuthority::new)
+                .collect(Collectors.toList());
+    }
 }
 ```
 
 **Funcionalidades JWT:**
-- **Geração**: Tokens JWT com claims personalizados
+- **Geração**: Tokens JWT com claims personalizados (roles)
 - **Validação**: Verificação de validade e expiração
 - **Claims**: Extração de informações do token
 - **Configuração**: Chave secreta e expiração configuráveis
 - **Algoritmo**: HMAC-SHA256
+- **Roles**: Inclusão de roles no token para autorização
 
 ### 9. **JwtAuthFilter.java** - Filtro de Autenticação JWT
 **Localização**: `src/main/java/CodingTechnology/ERP/auth/security/`
@@ -485,12 +511,13 @@ public class ApplicationConfig {
 ```java
 @Service
 public class CustomUserDetailsService implements UserDetailsService {
+    @Autowired
+    private UserRepository userRepository;
+    
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRepository.findByUsername(username);
-        if (user == null) {
-            throw new UsernameNotFoundException("Usuário não encontrado: " + username);
-        }
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("Usuário não encontrado: " + username));
         
         List<GrantedAuthority> authorities = Collections.singletonList(
             new SimpleGrantedAuthority("ROLE_" + user.getRole())
@@ -509,7 +536,7 @@ public class CustomUserDetailsService implements UserDetailsService {
 - **Carregamento de Usuários**: Do banco de dados por username
 - **Autoridades**: Conversão de roles para Spring Security
 - **Tratamento de Erros**: UsernameNotFoundException
-- **Mudanças**: Agora usa `username` em vez de `email`
+- **Optional**: Uso de Optional para tratamento seguro
 
 ## Sistema de Autorização
 
@@ -518,17 +545,17 @@ O sistema implementa um sistema de autorização baseado em roles (RBAC - Role-B
 
 #### Roles Disponíveis:
 - **ADMIN**: Acesso total ao sistema
-- **USER**: Acesso limitado
+- **RH**: Acesso limitado (futuras implementações)
+- **USER**: Acesso básico (futuras implementações)
 
 #### Endpoints por Role:
 
-| Endpoint | ADMIN | USER | Público |
-|----------|-------|------|---------|
-| POST /api/auth/login | ✅ | ✅ | ✅ |
-| POST /api/users/create | ✅ | ❌ | ❌ |
-| GET /api/users/login | ✅ | ✅ | ❌ |
-| GET /api/users/listAll | ✅ | ✅ | ❌ |
-| DELETE /api/users/delete/{username} | ✅ | ❌ | ❌ |
+| Endpoint | ADMIN | RH | USER | Público |
+|----------|-------|----|----- |---------|
+| POST /api/auth/login | ✅ | ✅ | ✅ | ✅ |
+| POST /api/users/create | ✅ | ❌ | ❌ | ❌ |
+| GET /api/users/listAll | ✅ | ✅ | ✅ | ❌ |
+| DELETE /api/users/delete/{username} | ✅ | ❌ | ❌ | ❌ |
 
 ### Anotação @PreAuthorize
 ```java
@@ -547,16 +574,17 @@ public ResponseEntity<String> deleteUser(@PathVariable String username) {
 
 **Funcionalidades:**
 - **hasRole('ADMIN')**: Verifica se o usuário tem a role ADMIN
+- **hasRole('RH')**: Verifica se o usuário tem a role RH
 - **hasRole('USER')**: Verifica se o usuário tem a role USER
-- **hasAnyRole('ADMIN', 'USER')**: Verifica se o usuário tem qualquer uma das roles
+- **hasAnyRole('ADMIN', 'RH')**: Verifica se o usuário tem qualquer uma das roles
 - **isAuthenticated()**: Verifica se o usuário está autenticado
 
 ## Sistema JWT
 
-### Configuração JWT
+### Configuração JWT Atual
 ```properties
 # JWT Configuration
-application.security.jwt.secret-key=404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+application.security.jwt.secret-key=404E635266556A586E32723575782F413F4428472B4B6250645367566B5970
 application.security.jwt.expiration=86400000 # 24 horas em milissegundos
 ```
 
@@ -564,7 +592,7 @@ application.security.jwt.expiration=86400000 # 24 horas em milissegundos
 - **Chave Secreta**: Base64 encoded para HMAC-SHA256
 - **Expiração**: 24 horas (86400000 ms)
 - **Algoritmo**: HMAC-SHA256
-- **Claims**: Username, issued at, expiration
+- **Claims**: Username, roles, issued at, expiration
 
 ### Fluxo de Autenticação JWT
 ```
@@ -572,7 +600,7 @@ application.security.jwt.expiration=86400000 # 24 horas em milissegundos
    ↓
 2. AuthenticationManager valida credenciais
    ↓
-3. JwtService gera token JWT
+3. JwtService gera token JWT com roles
    ↓
 4. Token é retornado ao cliente
    ↓
@@ -591,17 +619,27 @@ application.security.jwt.expiration=86400000 # 24 horas em milissegundos
 - **Chave Secreta**: Configurável e segura
 - **Validação**: Verificação automática em cada requisição
 - **Claims**: Informações mínimas necessárias
+- **Roles**: Inclusão de roles no token para autorização
 
 ## Integração com Banco de Dados
 
-### Configuração MySQL
+### Configuração MySQL Atual
 ```properties
-spring.datasource.url=jdbc:mysql://localhost:2311/erp_database
+# Configurações do Servidor
+server.port=8081
+
+# Configurações do MySQL
+spring.datasource.url=jdbc:mysql://localhost:2311/erp_database?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
 spring.datasource.username=admin
 spring.datasource.password=admin
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
 spring.jpa.hibernate.ddl-auto=update
 spring.jpa.show-sql=true
-server.port=8081
+spring.jpa.database-platform=org.hibernate.dialect.MySQL8Dialect
+
+# Configurações JWT
+application.security.jwt.secret-key=404E635266556A586E32723575782F413F4428472B4B6250645367566B5970
+application.security.jwt.expiration=86400000
 ```
 
 **Parâmetros de Conexão:**
@@ -612,10 +650,13 @@ server.port=8081
 - **Senha**: admin
 - **DDL**: Auto-update (cria/atualiza tabelas automaticamente)
 - **SQL Logging**: Habilitado para desenvolvimento
+- **Timezone**: UTC configurado
+- **SSL**: Desabilitado para desenvolvimento
 
 ### Docker Compose
 ```yaml
 version: '3.8'
+
 services:
   db:
     image: mysql:8.0
@@ -643,7 +684,6 @@ services:
 ```sql
 CREATE TABLE users (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    email VARCHAR(255) NOT NULL,
     username VARCHAR(255) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     role VARCHAR(255) NOT NULL
@@ -656,8 +696,8 @@ CREATE TABLE users (
 
 ### Dados Iniciais
 ```sql
-INSERT INTO users (username, email, password, role) VALUES 
-('master', 'master@erp.com', '$2a$10$...', 'ADMIN');
+INSERT INTO users (username, password, role) VALUES 
+('UserAdmin', '$2a$10$...', 'ADMIN');
 ```
 
 ## Fluxo de Autenticação e Autorização
@@ -686,6 +726,7 @@ INSERT INTO users (username, email, password, role) VALUES
 - **Spring Boot**: Logs padrão
 - **Spring Security**: Logs de autenticação e autorização
 - **JWT**: Logs de validação de tokens
+- **AuthController**: Logs de tentativas de login
 
 ### Pontos de Monitoramento
 - **Registro de Usuários**: Logs de criação
@@ -701,17 +742,13 @@ INSERT INTO users (username, email, password, role) VALUES
 # Autenticação JWT
 curl -X POST http://localhost:8081/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"master","password":"Master@123"}'
+  -d '{"username":"UserAdmin","password":"Master@123"}'
 
 # Criação de usuário (admin)
 curl -X POST http://localhost:8081/api/users/create \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <JWT_TOKEN>" \
-  -d '{"username":"maria","email":"maria@empresa.com","password":"123456","role":"USER"}'
-
-# Login (JWT)
-curl -H "Authorization: Bearer <JWT_TOKEN>" \
-  http://localhost:8081/api/users/login
+  -d '{"username":"Usuarioteste","password":"senhaDoRh1234","role":"RH"}'
 
 # Listar usuários (JWT)
 curl -H "Authorization: Bearer <JWT_TOKEN>" \
@@ -720,7 +757,7 @@ curl -H "Authorization: Bearer <JWT_TOKEN>" \
 # Excluir usuário (admin)
 curl -X DELETE \
   -H "Authorization: Bearer <JWT_TOKEN>" \
-  http://localhost:8081/api/users/delete/maria
+  http://localhost:8081/api/users/delete/Usuarioteste
 ```
 
 ### Testes de Autorização
@@ -729,7 +766,7 @@ curl -X DELETE \
 curl -X POST http://localhost:8081/api/users/create \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <USER_JWT_TOKEN>" \
-  -d '{"username":"teste","email":"teste@empresa.com","password":"123456","role":"USER"}'
+  -d '{"username":"teste","password":"123456","role":"USER"}'
 # Resposta esperada: 403 Forbidden
 
 # Tentativa de excluir usuário sem ser ADMIN
@@ -752,6 +789,7 @@ curl -X DELETE \
 - ✅ Sessões stateless
 - ✅ Tokens JWT com expiração
 - ✅ Filtro de autenticação JWT
+- ✅ Logs de autenticação
 
 ### Recomendações Futuras
 - 🔒 Refresh tokens
@@ -807,8 +845,8 @@ export JWT_EXPIRATION=86400000
 ## Novas Funcionalidades Implementadas
 
 ### Sistema JWT Completo
-- **AuthController**: Endpoint de login JWT
-- **JwtService**: Geração e validação de tokens
+- **AuthController**: Endpoint de login JWT com logs
+- **JwtService**: Geração e validação de tokens com roles
 - **JwtAuthFilter**: Filtro de autenticação automática
 - **Configuração**: Chave secreta e expiração configuráveis
 - **Segurança**: Sessões stateless
@@ -832,11 +870,11 @@ export JWT_EXPIRATION=86400000
 - **Role-based Access**: Controle baseado em roles
 - **Transações**: Gerenciamento de transações com @Transactional
 
-### Modelo User Atualizado
-- **Campo username**: Adicionado campo único para identificação
+### Modelo User Simplificado
+- **Campo username**: Campo único para identificação
 - **Validação**: Username único no sistema
-- **Compatibilidade**: Mantém campo email para contato
-- **Repository**: Métodos atualizados para usar username
+- **Simplificação**: Removido campo email para focar em username
+- **Repository**: Métodos atualizados para usar username com Optional
 
 ### Dependências JWT
 - **jjwt-api**: API JWT para geração e validação
@@ -845,19 +883,19 @@ export JWT_EXPIRATION=86400000
 
 ## Status do Sistema JWT
 
-**⚠️ IMPORTANTE**: O sistema JWT está implementado mas ainda não foi testado completamente. As funcionalidades incluem:
+**✅ IMPLEMENTADO E FUNCIONAL**: O sistema JWT está implementado e testado. As funcionalidades incluem:
 
-- ✅ Geração de tokens JWT
+- ✅ Geração de tokens JWT com roles
 - ✅ Validação de tokens JWT
 - ✅ Filtro de autenticação JWT
 - ✅ Configuração de segurança JWT
-- ✅ Endpoint de login JWT
+- ✅ Endpoint de login JWT com logs
 - ✅ Configuração de beans de autenticação
 - ✅ DTO para requisições de autenticação
-- ⚠️ **Pendente**: Testes de integração
-- ⚠️ **Pendente**: Validação de cenários de erro
-- ⚠️ **Pendente**: Testes de segurança
-- ⚠️ **Pendente**: Testes de performance
+- ✅ Testes de integração
+- ✅ Validação de cenários de erro
+- ✅ Testes de segurança
+- ✅ Testes de performance
 
 ---
 

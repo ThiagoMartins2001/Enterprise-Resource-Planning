@@ -4,11 +4,11 @@
 **ThiagoMartins2001**
 
 ## Visão Geral
-Sistema ERP desenvolvido em Spring Boot com arquitetura MVC, oferecendo funcionalidades de gerenciamento de usuários com autenticação JWT e autorização baseada em roles.
+Sistema ERP desenvolvido em Spring Boot com arquitetura MVC, oferecendo funcionalidades de gerenciamento de usuários com autenticação JWT e autorização baseada em roles. O sistema implementa um controle de acesso robusto com diferentes níveis de permissão.
 
 ## Tecnologias Utilizadas
 - **Java 21**
-- **Spring Boot 3.5.5**
+- **Spring Boot 3.3.0**
 - **Spring Security**
 - **Spring Data JPA**
 - **MySQL 8.0**
@@ -16,11 +16,12 @@ Sistema ERP desenvolvido em Spring Boot com arquitetura MVC, oferecendo funciona
 - **Maven**
 - **Lombok**
 - **JWT (JSON Web Tokens)**
+- **BCrypt** (Criptografia de senhas)
 
 ## Estrutura do Projeto
 
-### Nova Organização Modular
-O projeto foi reorganizado para melhor separação de responsabilidades e manutenibilidade:
+### Organização Modular
+O projeto foi organizado seguindo princípios de separação de responsabilidades:
 
 ```
 src/main/java/CodingTechnology/ERP/
@@ -39,470 +40,404 @@ src/main/java/CodingTechnology/ERP/
 │   ├── DTO/                       # DTOs de autenticação
 │   │   └── AuthRequest.java
 │   └── security/                  # Componentes de segurança
-│       ├── CustomUserDetailsService.java
 │       ├── JwtAuthFilter.java
 │       └── JwtService.java
 ├── config/                        # Configurações da aplicação
-│   ├── ApplicationConfig.java
-│   └── SecurityConfig.java
+│   └── SecurityConfiguration.java
 └── ErpApplication.java            # Classe principal
 ```
 
-### Benefícios da Nova Estrutura
-- **Modularidade**: Cada funcionalidade tem seu próprio pacote
-- **Manutenibilidade**: Código mais organizado e fácil de manter
-- **Escalabilidade**: Facilita adição de novos módulos
-- **Testabilidade**: Melhor isolamento para testes unitários
-- **Reutilização**: Componentes podem ser reutilizados entre módulos
-- **Clareza**: Estrutura mais intuitiva para novos desenvolvedores
+## Funcionalidades Atuais
 
-### Arquitetura MVC
-O sistema segue o padrão Model-View-Controller (MVC) com as seguintes camadas:
+### 1. **Sistema de Autenticação JWT**
+- Autenticação segura com tokens JWT
+- Expiração de tokens configurável
+- Filtro de autenticação automático
+- Criptografia de senhas com BCrypt
 
-#### 1. **Model (Modelo)**
-Localização: `src/main/java/CodingTechnology/ERP/user/model/`
+### 2. **Gerenciamento de Usuários**
+- Criação de usuários (apenas administradores)
+- Listagem de todos os usuários
+- Exclusão de usuários (apenas administradores)
+- Sistema de roles (ADMIN, RH, USER)
 
-##### User.java
-- **Função**: Entidade JPA que representa um usuário no sistema
-- **Campos**:
-  - `id`: Identificador único (auto-incremento)
-  - `email`: Email do usuário (obrigatório)
-  - `username`: Nome de usuário único (obrigatório, único)
-  - `password`: Senha criptografada (obrigatório)
-  - `role`: Papel/função do usuário (obrigatório)
-- **Anotações**: `@Entity`, `@Table`, `@Data` (Lombok)
+### 3. **Controle de Acesso**
+- Autorização baseada em roles
+- Endpoints protegidos por JWT
+- Diferentes níveis de permissão
 
-#### 2. **Repository (Repositório)**
-Localização: `src/main/java/CodingTechnology/ERP/user/repository/`
-
-##### UserRepository.java
-- **Função**: Interface que estende JpaRepository para operações de banco de dados
-- **Métodos**:
-  - `findByUsername(String username)`: Busca usuário por username
-  - `existsByUsername(String username)`: Verifica se username existe
-  - `deleteByUsername(String username)`: Remove usuário por username
-  - Métodos herdados: `save()`, `findAll()`, `findById()`, `delete()`
-
-#### 3. **Service (Serviço)**
-Localização: `src/main/java/CodingTechnology/ERP/user/service/`
-
-##### UserService.java
-- **Função**: Camada de negócio que implementa a lógica de usuários
-- **Métodos**:
-  - `saveUser(User user)`: Salva usuário com senha criptografada
-  - `findByUsername(String username)`: Busca usuário por username
-  - `findAllUsers()`: Lista todos os usuários
-  - `deleteByUsername(String username)`: Remove usuário por username
-- **Funcionalidades**: Criptografia automática de senhas usando BCrypt
-- **Transações**: Gerenciamento de transações com `@Transactional`
-
-#### 4. **Controller (Controlador)**
-Localização: `src/main/java/CodingTechnology/ERP/user/controller/`
-
-##### UserController.java
-- **Função**: Controlador REST que expõe endpoints da API de usuários
-- **Endpoints**:
-  - `POST /api/users/create`: Cria novo usuário (apenas ADMIN)
-  - `GET /api/users/login`: Endpoint de login (simulado)
-  - `GET /api/users/listAll`: Lista todos os usuários
-  - `DELETE /api/users/delete/{username}`: Remove usuário por username (apenas ADMIN)
-- **Respostas**: HTTP Status codes apropriados (201, 200, 409, 403, 404)
-- **Autorização**: Sistema de roles com @PreAuthorize
-
-Localização: `src/main/java/CodingTechnology/ERP/auth/controller/`
-
-##### AuthController.java
-- **Função**: Controlador REST para autenticação JWT
-- **Endpoints**:
-  - `POST /api/auth/login`: Autentica usuário e retorna token JWT
-- **Funcionalidades**: Autenticação com username/password e geração de token JWT
-
-#### 5. **Security (Segurança)**
-Localização: `src/main/java/CodingTechnology/ERP/auth/security/`
-
-##### SecurityConfig.java
-- **Função**: Configuração de segurança do Spring Security
-- **Funcionalidades**:
-  - Desabilita CSRF
-  - Configura autenticação JWT
-  - Define endpoints públicos e protegidos
-  - Configura BCrypt para criptografia de senhas
-  - Configura AuthenticationProvider
-  - Habilita Method Security com @EnableMethodSecurity
-  - Configura sessões stateless para JWT
-
-##### JwtService.java
-- **Função**: Serviço para geração e validação de tokens JWT
-- **Funcionalidades**:
-  - Geração de tokens JWT
-  - Validação de tokens
-  - Extração de claims
-  - Verificação de expiração
-  - Configuração de chave secreta e expiração
-
-##### JwtAuthFilter.java
-- **Função**: Filtro para autenticação JWT
-- **Funcionalidades**:
-  - Intercepta requisições com header Authorization
-  - Valida tokens JWT
-  - Configura autenticação no SecurityContext
-  - Suporte a Bearer tokens
-
-##### CustomUserDetailsService.java
-- **Função**: Serviço customizado para autenticação de usuários
-- **Funcionalidades**:
-  - Carrega usuários do banco de dados
-  - Converte roles para autoridades do Spring Security
-  - Integra com UserRepository
-
-#### 6. **DTO (Data Transfer Object)**
-Localização: `src/main/java/CodingTechnology/ERP/auth/DTO/`
-
-##### AuthRequest.java
-- **Função**: DTO para requisições de autenticação
-- **Campos**:
-  - `username`: Nome de usuário
-  - `password`: Senha
-
-#### 7. **Configuration (Configuração)**
-Localização: `src/main/java/CodingTechnology/ERP/config/`
-
-##### ApplicationConfig.java
-- **Função**: Configuração de beans de autenticação
-- **Funcionalidades**:
-  - Configura UserDetailsService
-  - Configura AuthenticationProvider
-  - Configura AuthenticationManager
-  - Configura PasswordEncoder
-
-#### 8. **Application (Aplicação Principal)**
-Localização: `src/main/java/CodingTechnology/ERP/`
-
-##### ErpApplication.java
-- **Função**: Classe principal da aplicação Spring Boot
-- **Funcionalidades**:
-  - Inicializa a aplicação
-  - Implementa CommandLineRunner para criação automática do usuário master
-  - Cria usuário administrador padrão (master@erp.com / Master@123)
-
-## Configurações
-
-### Banco de Dados
-- **Tipo**: MySQL 8.0
-- **Porta**: 2311
-- **Database**: erp_database
-- **Usuário**: admin
-- **Senha**: admin
-- **Configuração**: `application.properties`
-
-### JWT
-- **Chave Secreta**: Configurada em `application.properties`
-- **Expiração**: 24 horas (86400000 ms)
-- **Algoritmo**: HMAC-SHA256
-
-### Docker
-- **Arquivo**: `docker-compose.yml`
-- **Serviço**: MySQL 8.0
-- **Volumes**: Persistência de dados em `./data`
-- **Porta**: 2311:3306
-
-### Aplicação
-- **Porta**: 8081
-- **URL Base**: http://localhost:8081
-- **DDL**: Auto-update (Hibernate)
-
-## Funcionalidades da API
-
-### 1. **Autenticação JWT**
-- **Endpoint**: `POST /api/auth/login`
-- **Acesso**: Público
-- **Corpo da Requisição**:
-```json
-{
-  "username": "master",
-  "password": "Master@123"
-}
-```
-- **Resposta**: 
-  - 200: Token JWT gerado
-  - 400: Credenciais inválidas
-
-### 2. **Criação de Usuário (Admin)**
-- **Endpoint**: `POST /api/users/create`
-- **Acesso**: Apenas ADMIN
-- **Autenticação**: JWT Bearer Token obrigatório
-- **Corpo da Requisição**:
-```json
-{
-  "username": "novo_usuario",
-  "email": "novo@empresa.com",
-  "password": "senha123",
-  "role": "USER"
-}
-```
-- **Resposta**: 
-  - 201: Usuário criado com sucesso
-  - 409: Username já em uso
-  - 403: Acesso negado (não é ADMIN)
-  - 401: Autenticação necessária
-
-### 3. **Login de Usuário**
-- **Endpoint**: `GET /api/users/login`
-- **Autenticação**: JWT Bearer Token
-- **Resposta**: 200 - Acesso confirmado
-
-### 4. **Listagem de Usuários**
-- **Endpoint**: `GET /api/users/listAll`
-- **Autenticação**: JWT Bearer Token obrigatório
-- **Resposta**: Lista de todos os usuários (200)
-
-### 5. **Exclusão de Usuário (Admin)**
-- **Endpoint**: `DELETE /api/users/delete/{username}`
-- **Acesso**: Apenas ADMIN
-- **Autenticação**: JWT Bearer Token obrigatório
-- **Parâmetros**: `username` (path variable)
-- **Resposta**: 
-  - 200: Usuário removido com sucesso
-  - 404: Usuário não encontrado
-  - 403: Acesso negado (não é ADMIN)
-  - 401: Autenticação necessária
-
-## Sistema de Autorização
-
-### Roles Disponíveis
-- **ADMIN**: Acesso total ao sistema
-- **USER**: Acesso limitado
-
-### Matriz de Permissões
-
-| Endpoint | ADMIN | USER | Público |
-|----------|-------|------|---------|
-| POST /api/auth/login | ✅ | ✅ | ✅ |
-| POST /api/users/create | ✅ | ❌ | ❌ |
-| GET /api/users/login | ✅ | ✅ | ❌ |
-| GET /api/users/listAll | ✅ | ✅ | ❌ |
-| DELETE /api/users/delete/{username} | ✅ | ❌ | ❌ |
-
-### Anotação @PreAuthorize
-O sistema utiliza a anotação `@PreAuthorize("hasRole('ADMIN')")` para controlar o acesso aos endpoints `/create` e `/delete/{username}`, garantindo que apenas administradores possam criar e remover usuários.
-
-## Segurança
-
-### Autenticação
-- **Método**: JWT (JSON Web Tokens)
-- **Criptografia**: BCrypt para senhas
-- **Armazenamento**: Banco de dados MySQL
-- **Sessões**: Stateless (sem estado)
-
-### Autorização
-- **Sistema**: Role-based (RBAC)
-- **Roles Disponíveis**: ADMIN, USER
-- **Endpoints Protegidos**: Todos exceto `/api/auth/**` e recursos estáticos
-- **Method Security**: Controle granular com @PreAuthorize
-
-### Endpoints Públicos
-- `/api/auth/**` - Endpoints de autenticação
-- `/` - Página inicial
-- `/index.html` - Interface web
-- `/css/**` - Arquivos CSS
-- `/js/**` - Arquivos JavaScript
-
-## Como Executar
+## Configuração e Instalação
 
 ### Pré-requisitos
 - Java 21
+- Maven 3.6+
 - Docker e Docker Compose
-- Maven
+- MySQL 8.0 (via Docker)
 
-### Passos para Execução
-
-1. **Iniciar o Banco de Dados**:
+### 1. Clone o Repositório
 ```bash
+git clone <url-do-repositorio>
+cd ERP
+```
+
+### 2. Configuração do Banco de Dados com Docker
+
+#### Iniciando o Container MySQL
+```bash
+# Na raiz do projeto, execute:
 docker-compose up -d
 ```
 
-2. **Executar a Aplicação**:
+Isso irá:
+- Criar um container MySQL 8.0
+- Configurar o banco `erp_database`
+- Mapear a porta 2311 para 3306
+- Persistir dados na pasta `./data`
+
+#### Verificando se o Container está Rodando
+```bash
+docker ps
+```
+
+### 3. Executando a Aplicação
+
+#### Via Maven
 ```bash
 mvn spring-boot:run
 ```
 
-3. **Acessar a Aplicação**:
-- Web: http://localhost:8081
-- API: http://localhost:8081/api/users
-
-### Usuário Padrão
-- **Username**: master
-- **Email**: master@erp.com
-- **Senha**: Master@123
-- **Role**: ADMIN
-
-## Exemplos de Uso
-
-### Autenticação JWT
+#### Via JAR
 ```bash
-curl -X POST http://localhost:8081/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "master",
+mvn clean package
+java -jar target/ERP-0.0.1-SNAPSHOT.jar
+```
+
+A aplicação estará disponível em: `http://localhost:8081`
+
+## Configuração do Usuário Administrador
+
+⚠️ **IMPORTANTE**: Na primeira execução, o sistema cria automaticamente um usuário administrador:
+
+- **Username**: `UserAdmin`
+- **Password**: `Master@123`
+- **Role**: `ADMIN`
+
+### Alterando as Credenciais do Administrador
+Para alterar as credenciais antes da primeira execução, edite o arquivo:
+`src/main/java/CodingTechnology/ERP/ErpApplication.java`
+
+```java
+// Linhas 30-32
+masterUser.setUsername("SeuUsuarioAdmin");
+masterUser.setPassword(passwordEncoder.encode("SuaSenhaSegura"));
+masterUser.setRole("ADMIN");
+```
+
+## API Endpoints
+
+### Base URL
+```
+http://localhost:8081
+```
+
+### 1. **Autenticação JWT**
+
+#### POST /api/auth/login
+Autentica um usuário e retorna um token JWT.
+
+**Headers:**
+```
+Content-Type: application/json
+```
+
+**Corpo da Requisição:**
+```json
+{
+    "username": "UserAdmin",
     "password": "Master@123"
-  }'
+}
 ```
 
-### Criação de Usuário (Admin)
-```bash
-curl -X POST http://localhost:8081/api/users/create \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <JWT_TOKEN>" \
-  -d '{
-    "username": "maria",
-    "email": "maria@empresa.com",
-    "password": "Senha123",
-    "role": "USER"
-  }'
+**Resposta de Sucesso (200):**
+```json
+{
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
 ```
 
-### Login
-```bash
-curl -H "Authorization: Bearer <JWT_TOKEN>" \
-  http://localhost:8081/api/users/login
+**Resposta de Erro (400):**
+```json
+{
+    "error": "Invalid credentials"
+}
 ```
 
-### Listar Usuários
-```bash
-curl -H "Authorization: Bearer <JWT_TOKEN>" \
-  http://localhost:8081/api/users/listAll
+### 2. **Criação de Usuário (Apenas ADMIN)**
+
+#### POST /api/users/create
+Cria um novo usuário no sistema.
+
+**Headers:**
+```
+Content-Type: application/json
+Authorization: Bearer <seu-token-jwt>
 ```
 
-### Excluir Usuário (Admin)
-```bash
-curl -X DELETE \
-  -H "Authorization: Bearer <JWT_TOKEN>" \
-  http://localhost:8081/api/users/delete/maria
+**Corpo da Requisição:**
+```json
+{
+    "username": "Usuarioteste",
+    "password": "senhaDoRh1234",
+    "role": "RH"
+}
 ```
 
-## Estrutura de Arquivos
-
+**Resposta de Sucesso (201):**
 ```
-ERP/
-├── src/main/java/CodingTechnology/ERP/
-│   ├── user/
-│   │   ├── controller/
-│   │   │   └── UserController.java
-│   │   ├── model/
-│   │   │   └── User.java
-│   │   ├── repository/
-│   │   │   └── UserRepository.java
-│   │   └── service/
-│   │       └── UserService.java
-│   ├── auth/
-│   │   ├── controller/
-│   │   │   └── AuthController.java
-│   │   ├── DTO/
-│   │   │   └── AuthRequest.java
-│   │   └── security/
-│   │       ├── CustomUserDetailsService.java
-│   │       ├── JwtAuthFilter.java
-│   │       └── JwtService.java
-│   ├── config/
-│   │   ├── ApplicationConfig.java
-│   │   └── SecurityConfig.java
-│   └── ErpApplication.java
-├── src/main/resources/
-│   ├── application.properties
-│   ├── static/
-│   │   ├── css/
-│   │   ├── js/
-│   │   └── index.html
-│   └── templates/
-├── data/ (dados do MySQL)
-├── docker-compose.yml
-├── pom.xml
-└── README.md
+User created successfully:
 ```
 
-## Dependências Principais
+**Resposta de Erro (409):**
+```
+Name already in use:
+```
 
-### Spring Boot Starters
-- `spring-boot-starter-web`: Web MVC
-- `spring-boot-starter-data-jpa`: JPA e Hibernate
-- `spring-boot-starter-security`: Segurança
-- `spring-boot-devtools`: Desenvolvimento
+**Resposta de Erro (403):**
+```
+Access Denied
+```
+
+### 3. **Listagem de Usuários**
+
+#### GET /api/users/listAll
+Lista todos os usuários cadastrados.
+
+**Headers:**
+```
+Authorization: Bearer <seu-token-jwt>
+```
+
+**Resposta de Sucesso (200):**
+```json
+[
+    {
+        "id": 1,
+        "username": "UserAdmin",
+        "role": "ADMIN"
+    },
+    {
+        "id": 2,
+        "username": "Usuarioteste",
+        "role": "RH"
+    }
+]
+```
+
+### 4. **Exclusão de Usuário (Apenas ADMIN)**
+
+#### DELETE /api/users/delete/{username}
+Remove um usuário do sistema.
+
+**Headers:**
+```
+Authorization: Bearer <seu-token-jwt>
+```
+
+**Parâmetros:**
+- `username`: Nome do usuário a ser excluído
+
+**Resposta de Sucesso (200):**
+```
+User deleted successfully!
+```
+
+**Resposta de Erro (404):**
+```
+User not found
+```
+
+## Testando a API com Postman
+
+### 1. **Configuração Inicial**
+
+1. Abra o Postman
+2. Crie uma nova Collection chamada "ERP System"
+3. Configure a Base URL: `http://localhost:8081`
+
+### 2. **Teste de Login**
+
+1. **Criar Nova Requisição:**
+   - Método: `POST`
+   - URL: `http://localhost:8081/api/auth/login`
+   - Headers: `Content-Type: application/json`
+
+2. **Body (raw JSON):**
+```json
+{
+    "username": "UserAdmin",
+    "password": "Master@123"
+}
+```
+
+3. **Executar e Copiar o Token:**
+   - Após executar, copie o valor do campo `token` da resposta
+
+### 3. **Configurando Autenticação para Outras Requisições**
+
+Para **TODAS** as outras requisições (exceto login):
+
+1. **Vá para a aba "Authorization"**
+2. **Selecione "Type": `Bearer Token`**
+3. **Cole o token JWT no campo "Token"**
+4. **Salve a requisição**
+
+### 4. **Teste de Criação de Usuário**
+
+1. **Criar Nova Requisição:**
+   - Método: `POST`
+   - URL: `http://localhost:8081/api/users/create`
+   - Authorization: Bearer Token (com o token do login)
+
+2. **Body (raw JSON):**
+```json
+{
+    "username": "Usuarioteste",
+    "password": "senhaDoRh1234",
+    "role": "RH"
+}
+```
+
+### 5. **Teste de Listagem de Usuários**
+
+1. **Criar Nova Requisição:**
+   - Método: `GET`
+   - URL: `http://localhost:8081/api/users/listAll`
+   - Authorization: Bearer Token (com o token do login)
+
+### 6. **Teste de Exclusão de Usuário**
+
+1. **Criar Nova Requisição:**
+   - Método: `DELETE`
+   - URL: `http://localhost:8081/api/users/delete/Usuarioteste`
+   - Authorization: Bearer Token (com o token do login)
+
+## Sistema de Roles
+
+### Roles Disponíveis
+- **ADMIN**: Acesso total ao sistema
+  - Pode criar usuários
+  - Pode excluir usuários
+  - Pode listar usuários
+- **RH**: Acesso limitado (futuras implementações)
+- **USER**: Acesso básico (futuras implementações)
+
+### Fluxo de Autenticação
+1. **Login**: Usuário faz login com username/password
+2. **Token**: Sistema retorna token JWT válido por 24 horas
+3. **Autorização**: Token é enviado no header `Authorization: Bearer <token>`
+4. **Validação**: Sistema valida token e verifica permissões
+
+## Configurações do Sistema
 
 ### Banco de Dados
-- `mysql-connector-j`: Driver MySQL
+- **Host**: localhost:2311
+- **Database**: erp_database
+- **Username**: admin
+- **Password**: admin
+- **Root Password**: Mudar123
 
-### JWT
-- `jjwt-api`: API JWT
-- `jjwt-impl`: Implementação JWT
-- `jjwt-jackson`: Serialização JWT
+### Aplicação
+- **Porta**: 8081
+- **JWT Secret**: Configurado em `application.properties`
+- **JWT Expiration**: 24 horas (86400000 ms)
 
-### Utilitários
-- `lombok`: Redução de boilerplate
-- `spring-security-test`: Testes de segurança
+### Docker
+- **MySQL Port**: 2311:3306
+- **Data Persistence**: `./data` directory
+- **Auto-restart**: Always
 
-## Funcionalidades Implementadas
+## Comandos Úteis
 
-### Sistema JWT
-- **Autenticação**: Endpoint `/api/auth/login` para geração de tokens
-- **Validação**: Filtro JWT para validação automática de tokens
-- **Sessões**: Sistema stateless com tokens JWT
-- **Segurança**: Chave secreta configurável e expiração de tokens
+### Docker
+```bash
+# Iniciar containers
+docker-compose up -d
 
-### Endpoint POST /api/users/create
-- **Propósito**: Criação de usuários por administradores
-- **Segurança**: Restrito apenas para usuários com role ADMIN
-- **Uso**: Para administradores criarem novos usuários no sistema
+# Parar containers
+docker-compose down
 
-### Endpoint DELETE /api/users/delete/{username}
-- **Propósito**: Exclusão de usuários por administradores
-- **Segurança**: Restrito apenas para usuários com role ADMIN
-- **Parâmetros**: Username do usuário a ser removido
-- **Uso**: Para administradores removerem usuários do sistema
+# Ver logs
+docker-compose logs -f
 
-### Sistema de Autorização Aprimorado
-- **@PreAuthorize**: Anotação para controle granular de acesso
-- **Method Security**: Segurança em nível de método
-- **Role-based Access**: Controle baseado em roles
-- **Transações**: Gerenciamento de transações com @Transactional
+# Reiniciar apenas o banco
+docker-compose restart db
+```
 
-### Modelo User Atualizado
-- **Campo username**: Adicionado campo único para identificação
-- **Validação**: Username único no sistema
-- **Compatibilidade**: Mantém campo email para contato
+### Maven
+```bash
+# Compilar projeto
+mvn clean compile
 
-## Funcionalidades Futuras Sugeridas
+# Executar testes
+mvn test
 
-1. **Gestão de Produtos**
-2. **Controle de Estoque**
-3. **Gestão de Clientes**
-4. **Relatórios e Dashboards**
-5. **Sistema de Notificações**
-6. **Auditoria de Logs**
-7. **API REST mais robusta**
-8. **Interface Web moderna**
-9. **Refresh Tokens**
-10. **Sistema de permissões mais granular**
-11. **Endpoint de registro público**
-12. **Validação de entrada com Bean Validation**
-13. **Rate Limiting**
-14. **MFA (Multi-Factor Authentication)**
+# Gerar JAR
+mvn clean package
 
-## Status do Sistema JWT
+# Executar aplicação
+mvn spring-boot:run
+```
 
-**⚠️ IMPORTANTE**: O sistema JWT está implementado mas ainda não foi testado completamente. As funcionalidades incluem:
+## Troubleshooting
 
-- ✅ Geração de tokens JWT
-- ✅ Validação de tokens JWT
-- ✅ Filtro de autenticação JWT
-- ✅ Configuração de segurança JWT
-- ✅ Endpoint de login JWT
-- ⚠️ **Pendente**: Testes de integração
-- ⚠️ **Pendente**: Validação de cenários de erro
-- ⚠️ **Pendente**: Testes de segurança
+### Problemas Comuns
 
-## Contato
-**Autor**: ThiagoMartins2001
+1. **Erro de Conexão com Banco:**
+   - Verifique se o Docker está rodando
+   - Confirme se a porta 2311 está livre
+   - Execute: `docker-compose logs db`
+
+2. **Token Inválido:**
+   - Faça novo login para obter token atualizado
+   - Verifique se o token está sendo enviado corretamente
+
+3. **Acesso Negado (403):**
+   - Confirme se o usuário tem role ADMIN
+   - Verifique se o token é válido
+
+4. **Porta 8081 em Uso:**
+   - Altere a porta em `application.properties`
+   - Ou pare o processo que está usando a porta
+
+## Próximas Implementações
+
+### v2.1 (Planejado)
+- [ ] Gestão de produtos
+- [ ] Controle de estoque
+- [ ] Sistema de vendas
+- [ ] Relatórios básicos
+- [ ] Atualização de usuários
+- [ ] Logs de auditoria
+
+### v2.2 (Futuro)
+- [ ] Dashboard administrativo
+- [ ] Sistema de notificações
+- [ ] API de relatórios avançados
+- [ ] Integração com sistemas externos
+
+## Contribuição
+
+Para contribuir com o projeto:
+1. Fork o repositório
+2. Crie uma branch para sua feature
+3. Commit suas mudanças
+4. Push para a branch
+5. Abra um Pull Request
+
+## Licença
+
+Este projeto está sob a licença MIT. Veja o arquivo LICENSE para mais detalhes.
 
 ---
 
-*Documentação atualizada em: Dezembro 2024*
+**Desenvolvido por ThiagoMartins2001** 🚀

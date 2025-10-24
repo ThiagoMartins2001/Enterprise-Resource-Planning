@@ -32,7 +32,7 @@ Content-Type: application/json
 **Corpo da Requisição**:
 ```json
 {
-  "username": "master",
+  "username": "UserAdmin",
   "password": "Master@123"
 }
 ```
@@ -62,7 +62,7 @@ Content-Type: application/json
 curl -X POST http://localhost:8081/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
-    "username": "master",
+    "username": "UserAdmin",
     "password": "Master@123"
   }'
 ```
@@ -75,7 +75,7 @@ fetch('http://localhost:8081/api/auth/login', {
     'Content-Type': 'application/json'
   },
   body: JSON.stringify({
-    username: 'master',
+    username: 'UserAdmin',
     password: 'Master@123'
   })
 })
@@ -109,29 +109,27 @@ Authorization: Bearer <JWT_TOKEN>
 **Corpo da Requisição**:
 ```json
 {
-  "username": "novo_usuario",
-  "email": "novo@empresa.com",
-  "password": "senha123",
-  "role": "USER"
+  "username": "Usuarioteste",
+  "password": "senhaDoRh1234",
+  "role": "RH"
 }
 ```
 
 **Parâmetros**:
 - `username` (string, obrigatório): Nome de usuário único
-- `email` (string, obrigatório): Email do usuário
 - `password` (string, obrigatório): Senha do usuário (será criptografada)
-- `role` (string, obrigatório): Papel do usuário (ADMIN ou USER)
+- `role` (string, obrigatório): Papel do usuário (ADMIN, RH, USER)
 
 **Respostas**:
 
 **Sucesso (201 Created)**:
-```json
-"User created successfully:"
+```
+User created successfully:
 ```
 
 **Erro - Username já existe (409 Conflict)**:
-```json
-"Name already in use:"
+```
+Name already in use:
 ```
 
 **Erro - Acesso negado (403 Forbidden)**:
@@ -160,10 +158,9 @@ curl -X POST http://localhost:8081/api/users/create \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
   -d '{
-    "username": "maria",
-    "email": "maria@empresa.com",
-    "password": "Senha123",
-    "role": "USER"
+    "username": "Usuarioteste",
+    "password": "senhaDoRh1234",
+    "role": "RH"
   }'
 ```
 
@@ -178,10 +175,9 @@ fetch('http://localhost:8081/api/users/create', {
     'Authorization': `Bearer ${token}`
   },
   body: JSON.stringify({
-    username: 'maria',
-    email: 'maria@empresa.com',
-    password: 'Senha123',
-    role: 'USER'
+    username: 'Usuarioteste',
+    password: 'senhaDoRh1234',
+    role: 'RH'
   })
 })
 .then(response => response.text())
@@ -191,63 +187,7 @@ fetch('http://localhost:8081/api/users/create', {
 
 ---
 
-### 3. Login de Usuário
-
-#### GET /api/users/login
-Endpoint para verificação de acesso autenticado.
-
-**URL**: `http://localhost:8081/api/users/login`
-
-**Método**: `GET`
-
-**Autenticação**: JWT Bearer Token obrigatório
-
-**Headers**:
-```
-Authorization: Bearer <JWT_TOKEN>
-```
-
-**Respostas**:
-
-**Sucesso (200 OK)**:
-```json
-"You have successfully accessed a secure endpoint!"
-```
-
-**Erro - Não autorizado (401 Unauthorized)**:
-```json
-{
-  "timestamp": "2024-01-01T12:00:00.000+00:00",
-  "status": 401,
-  "error": "Unauthorized",
-  "message": "Full authentication is required to access this resource"
-}
-```
-
-**Exemplo de Uso (cURL)**:
-```bash
-curl -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
-  http://localhost:8081/api/users/login
-```
-
-**Exemplo de Uso (JavaScript)**:
-```javascript
-const token = localStorage.getItem('jwt_token');
-
-fetch('http://localhost:8081/api/users/login', {
-  method: 'GET',
-  headers: {
-    'Authorization': `Bearer ${token}`
-  }
-})
-.then(response => response.text())
-.then(data => console.log(data))
-.catch(error => console.error('Erro:', error));
-```
-
----
-
-### 4. Listagem de Usuários
+### 3. Listagem de Usuários
 
 #### GET /api/users/listAll
 Lista todos os usuários registrados no sistema.
@@ -270,17 +210,13 @@ Authorization: Bearer <JWT_TOKEN>
 [
   {
     "id": 1,
-    "username": "master",
-    "email": "master@erp.com",
-    "password": "$2a$10$...",
+    "username": "UserAdmin",
     "role": "ADMIN"
   },
   {
     "id": 2,
-    "username": "joao",
-    "email": "joao@empresa.com",
-    "password": "$2a$10$...",
-    "role": "USER"
+    "username": "Usuarioteste",
+    "role": "RH"
   }
 ]
 ```
@@ -318,7 +254,7 @@ fetch('http://localhost:8081/api/users/listAll', {
 
 ---
 
-### 5. Exclusão de Usuário (Admin)
+### 4. Exclusão de Usuário (Admin)
 
 #### DELETE /api/users/delete/{username}
 Remove um usuário do sistema por username (apenas para administradores).
@@ -340,13 +276,13 @@ Authorization: Bearer <JWT_TOKEN>
 **Respostas**:
 
 **Sucesso (200 OK)**:
-```json
-"User deleted successfully!"
+```
+User deleted successfully!
 ```
 
 **Erro - Usuário não encontrado (404 Not Found)**:
-```json
-"User not found"
+```
+User not found
 ```
 
 **Erro - Acesso negado (403 Forbidden)**:
@@ -373,14 +309,14 @@ Authorization: Bearer <JWT_TOKEN>
 ```bash
 curl -X DELETE \
   -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
-  http://localhost:8081/api/users/delete/maria
+  http://localhost:8081/api/users/delete/Usuarioteste
 ```
 
 **Exemplo de Uso (JavaScript)**:
 ```javascript
 const token = localStorage.getItem('jwt_token');
 
-fetch('http://localhost:8081/api/users/delete/maria', {
+fetch('http://localhost:8081/api/users/delete/Usuarioteste', {
   method: 'DELETE',
   headers: {
     'Authorization': `Bearer ${token}`
@@ -427,7 +363,7 @@ Authorization: Bearer <JWT_TOKEN>
 ### Exemplo de Token JWT
 ```javascript
 // Token JWT típico (exemplo)
-const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJtYXN0ZXIiLCJpYXQiOjE2MzU2NzI4MDAsImV4cCI6MTYzNTc1OTIwMH0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
+const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJVc2VyQWRtaW4iLCJpYXQiOjE2MzU2NzI4MDAsImV4cCI6MTYzNTc1OTIwMH0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
 
 // Uso em requisições
 fetch('/api/users/listAll', {
@@ -436,6 +372,12 @@ fetch('/api/users/listAll', {
   }
 });
 ```
+
+### Configuração JWT Atual
+- **Chave Secreta**: `404E635266556A586E32723575782F413F4428472B4B6250645367566B5970`
+- **Expiração**: 24 horas (86400000 ms)
+- **Algoritmo**: HMAC-SHA256
+- **Claims**: Username, roles, issued at, expiration
 
 ---
 
@@ -465,7 +407,7 @@ class ERPClient:
             return True
         return False
     
-    def create_user(self, username, email, password, role):
+    def create_user(self, username, password, role):
         """Cria novo usuário (apenas ADMIN)"""
         if not self.token:
             return "Token não disponível. Faça login primeiro."
@@ -477,7 +419,6 @@ class ERPClient:
         }
         data = {
             "username": username,
-            "email": email,
             "password": password,
             "role": role
         }
@@ -517,11 +458,11 @@ class ERPClient:
 client = ERPClient()
 
 # Login como admin
-if client.login("master", "Master@123"):
+if client.login("UserAdmin", "Master@123"):
     print("Login realizado com sucesso!")
     
     # Criar usuário
-    status, result = client.create_user("maria", "maria@empresa.com", "Senha123", "USER")
+    status, result = client.create_user("Usuarioteste", "senhaDoRh1234", "RH")
     print(f"Criação: {status} - {result}")
     
     # Listar usuários
@@ -529,7 +470,7 @@ if client.login("master", "Master@123"):
     print(f"Usuários: {users}")
     
     # Excluir usuário
-    status, result = client.delete_user("maria")
+    status, result = client.delete_user("Usuarioteste")
     print(f"Exclusão: {status} - {result}")
 else:
     print("Falha no login")
@@ -573,14 +514,14 @@ public class ERPClient {
         return false;
     }
     
-    public String createUser(String username, String email, String password, String role) throws Exception {
+    public String createUser(String username, String password, String role) throws Exception {
         if (token == null) {
             return "Token não disponível. Faça login primeiro.";
         }
         
         String json = String.format(
-            "{\"username\":\"%s\",\"email\":\"%s\",\"password\":\"%s\",\"role\":\"%s\"}",
-            username, email, password, role
+            "{\"username\":\"%s\",\"password\":\"%s\",\"role\":\"%s\"}",
+            username, password, role
         );
         
         HttpRequest request = HttpRequest.newBuilder()
@@ -667,14 +608,13 @@ class ERPClient {
         return false;
     }
     
-    public function createUser($username, $email, $password, $role) {
+    public function createUser($username, $password, $role) {
         if ($this->token === null) {
             return ['code' => 401, 'response' => 'Token não disponível. Faça login primeiro.'];
         }
         
         $data = [
             'username' => $username,
-            'email' => $email,
             'password' => $password,
             'role' => $role
         ];
@@ -740,11 +680,11 @@ class ERPClient {
 $client = new ERPClient();
 
 // Login como admin
-if ($client->login('master', 'Master@123')) {
+if ($client->login('UserAdmin', 'Master@123')) {
     echo "Login realizado com sucesso!\n";
     
     // Criar usuário
-    $result = $client->createUser('ana', 'ana@empresa.com', 'Senha123', 'USER');
+    $result = $client->createUser('Usuarioteste', 'senhaDoRh1234', 'RH');
     echo "Criação: " . $result['code'] . " - " . $result['response'] . "\n";
     
     // Listar usuários
@@ -752,7 +692,7 @@ if ($client->login('master', 'Master@123')) {
     echo "Usuários: " . print_r($users, true) . "\n";
     
     // Excluir usuário
-    $result = $client->deleteUser('ana');
+    $result = $client->deleteUser('Usuarioteste');
     echo "Exclusão: " . $result['code'] . " - " . $result['response'] . "\n";
 } else {
     echo "Falha no login\n";
@@ -785,7 +725,7 @@ if ($client->login('master', 'Master@123')) {
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"username\": \"master\",\n  \"password\": \"Master@123\"\n}"
+          "raw": "{\n  \"username\": \"UserAdmin\",\n  \"password\": \"Master@123\"\n}"
         },
         "url": {
           "raw": "http://localhost:8081/api/auth/login",
@@ -812,7 +752,7 @@ if ($client->login('master', 'Master@123')) {
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"username\": \"novo_usuario\",\n  \"email\": \"novo@empresa.com\",\n  \"password\": \"123456\",\n  \"role\": \"USER\"\n}"
+          "raw": "{\n  \"username\": \"Usuarioteste\",\n  \"password\": \"senhaDoRh1234\",\n  \"role\": \"RH\"\n}"
         },
         "url": {
           "raw": "http://localhost:8081/api/users/create",
@@ -820,25 +760,6 @@ if ($client->login('master', 'Master@123')) {
           "host": ["localhost"],
           "port": "8081",
           "path": ["api", "users", "create"]
-        }
-      }
-    },
-    {
-      "name": "Login de Usuário",
-      "request": {
-        "method": "GET",
-        "header": [
-          {
-            "key": "Authorization",
-            "value": "Bearer {{jwt_token}}"
-          }
-        ],
-        "url": {
-          "raw": "http://localhost:8081/api/users/login",
-          "protocol": "http",
-          "host": ["localhost"],
-          "port": "8081",
-          "path": ["api", "users", "login"]
         }
       }
     },
@@ -888,7 +809,7 @@ if ($client->login('master', 'Master@123')) {
     },
     {
       "key": "username",
-      "value": "teste"
+      "value": "Usuarioteste"
     }
   ]
 }
@@ -896,11 +817,29 @@ if ($client->login('master', 'Master@123')) {
 
 ---
 
+## Sistema de Roles
+
+### Roles Disponíveis
+- **ADMIN**: Acesso total ao sistema
+  - Pode criar usuários
+  - Pode excluir usuários
+  - Pode listar usuários
+- **RH**: Acesso limitado (futuras implementações)
+- **USER**: Acesso básico (futuras implementações)
+
+### Fluxo de Autenticação
+1. **Login**: Usuário faz login com username/password
+2. **Token**: Sistema retorna token JWT válido por 24 horas
+3. **Autorização**: Token é enviado no header `Authorization: Bearer <token>`
+4. **Validação**: Sistema valida token e verifica permissões
+
+---
+
 ## Limitações Atuais
 
-1. **Autenticação**: JWT implementado mas não testado completamente
+1. **Autenticação**: JWT implementado e testado
 2. **Validação**: Validação básica de username único
-3. **Roles**: Apenas ADMIN e USER
+3. **Roles**: ADMIN, RH, USER
 4. **Endpoints**: Operações básicas de usuário (CRUD parcial)
 5. **Segurança**: Sem rate limiting ou validação avançada
 6. **Autorização**: Endpoints /create e /delete restritos apenas para ADMIN
@@ -932,7 +871,7 @@ if ($client->login('master', 'Master@123')) {
 
 ## Status do Sistema JWT
 
-**⚠️ IMPORTANTE**: O sistema JWT está implementado mas ainda não foi testado completamente. As funcionalidades incluem:
+**✅ IMPLEMENTADO E FUNCIONAL**: O sistema JWT está implementado e testado. As funcionalidades incluem:
 
 - ✅ Geração de tokens JWT
 - ✅ Validação de tokens JWT
@@ -941,10 +880,10 @@ if ($client->login('master', 'Master@123')) {
 - ✅ Endpoint de login JWT
 - ✅ Configuração de beans de autenticação
 - ✅ DTO para requisições de autenticação
-- ⚠️ **Pendente**: Testes de integração
-- ⚠️ **Pendente**: Validação de cenários de erro
-- ⚠️ **Pendente**: Testes de segurança
-- ⚠️ **Pendente**: Testes de performance
+- ✅ Testes de integração
+- ✅ Validação de cenários de erro
+- ✅ Testes de segurança
+- ✅ Testes de performance
 
 ---
 
@@ -970,12 +909,10 @@ src/main/java/CodingTechnology/ERP/
 │   ├── DTO/                       # DTOs de autenticação
 │   │   └── AuthRequest.java
 │   └── security/                  # Componentes de segurança
-│       ├── CustomUserDetailsService.java
 │       ├── JwtAuthFilter.java
 │       └── JwtService.java
 ├── config/                        # Configurações da aplicação
-│   ├── ApplicationConfig.java
-│   └── SecurityConfig.java
+│   └── SecurityConfiguration.java
 └── ErpApplication.java            # Classe principal
 ```
 

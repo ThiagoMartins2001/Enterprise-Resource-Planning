@@ -28,7 +28,6 @@ public class ErpApplication implements CommandLineRunner {
         if (userRepository.findByUsername("UserAdmin").isEmpty()) {
             User masterUser = new User();
             masterUser.setUsername("UserAdmin");
-            masterUser.setEmail("master@erp.com");
             masterUser.setPassword(passwordEncoder.encode("Master@123")); // Defina uma senha forte aqui
             masterUser.setRole("ADMIN"); // Define o papel de administrador
             userRepository.save(masterUser);
